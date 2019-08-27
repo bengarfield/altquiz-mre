@@ -199,18 +199,21 @@ export async function questionManager(app: any) {
     // fillDB(token, 50);
 }
 
+let connected = false;
 export async function loadQuestions(): Promise<QueryResult> {
-    if (!client._connected) {
+    if (!connected) {
         console.log('Connecting to database...');
         await client.connect();
+        connected = true;
     }
     return client.query('SELECT * FROM questionsTest ORDER BY RANDOM() LIMIT 50');
 }
 
 export async function query(str: string): Promise<QueryResult> {
-    if (!client._connected) {
+    if (!connected) {
         console.log('Connecting to database...');
         await client.connect();
+        connected = true;
     }
     return client.query(str);
 }
