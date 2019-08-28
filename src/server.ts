@@ -12,8 +12,8 @@ process.on('unhandledRejection', reason => console.log('unhandledRejection', rea
 
 // Start listening for connections, and serve static files
 const server = new WebHost({
-    baseDir: resolvePath(__dirname, '../public'),
-    // baseUrl: 'http://ec66ed80.eu.ngrok.io'
+	baseDir: resolvePath(__dirname, '../public'),
+	// baseUrl: 'http://ec66ed80.eu.ngrok.io'
 });
 
 // Handle new application sessions
