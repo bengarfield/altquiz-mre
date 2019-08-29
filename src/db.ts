@@ -25,14 +25,31 @@ interface QuestionList {
 		[key: string]: Question[];
 	};
 }
-const categories: Category[] = [{id: 9, name: 'General Knowledge'}, {id: 10, name: 'Entertainment: Books'}, {id: 11, name: 'Entertainment: Film'},
-  {id: 12, name: 'Entertainment: Music'}, {id: 13, name: 'Entertainment: Musicals & Theatres'}, {id: 14, name: 'Entertainment: Television'},
-  {id: 15, name: 'Entertainment: Video Games'}, {id: 16, name: 'Entertainment: Board Games'}, {id: 17, name: 'Science & Nature'},
-  {id: 18, name: 'Science: Computers'}, {id: 19, name: 'Science: Mathematics'}, {id: 20, name: 'Mythology'},
-  {id: 21, name: 'Sports'}, {id: 22, name: 'Geography'}, {id: 23, name: 'History'},
-  {id: 24, name: 'Politics'}, {id: 25, name: 'Art'}, {id: 26, name: 'Celebrities'},
-  {id: 27, name: 'Animals'}, {id: 28, name: 'Vehicles'}, {id: 29, name: 'Entertainment: Comics'},
-  {id: 30, name: 'Science: Gadgets'}, {id: 31, name: 'Entertainment: Japanese Anime & Manga'}, {id: 32, name: 'Entertainment: Cartoon & Animations'}];
+const categories: Category[] = [
+	{id: 9, name: 'General Knowledge'},
+	{id: 10, name: 'Entertainment: Books'},
+	{id: 11, name: 'Entertainment: Film'},
+	{id: 12, name: 'Entertainment: Music'},
+	{id: 13, name: 'Entertainment: Musicals & Theatres'},
+	{id: 14, name: 'Entertainment: Television'},
+	{id: 15, name: 'Entertainment: Video Games'},
+	{id: 16, name: 'Entertainment: Board Games'},
+	{id: 17, name: 'Science & Nature'},
+	{id: 18, name: 'Science: Computers'},
+	{id: 19, name: 'Science: Mathematics'},
+	{id: 20, name: 'Mythology'},
+	{id: 21, name: 'Sports'},
+	{id: 22, name: 'Geography'},
+	{id: 23, name: 'History'},
+	{id: 24, name: 'Politics'},
+	{id: 25, name: 'Art'},
+	{id: 26, name: 'Celebrities'},
+	{id: 27, name: 'Animals'},
+	{id: 28, name: 'Vehicles'},
+	{id: 29, name: 'Entertainment: Comics'},
+	{id: 30, name: 'Science: Gadgets'},
+	{id: 31, name: 'Entertainment: Japanese Anime & Manga'},
+	{id: 32, name: 'Entertainment: Cartoon & Animations'}];
 const client = new Client({
 	connectionString: process.env.database_url,
 	ssl: true
@@ -380,7 +397,7 @@ function decode(data: Question[]) {
 		q.correct_answer = decodeURIComponent(q.correct_answer);
 		addslashes(q.correct_answer);
 		for (const inc of q.incorrect_answers) {
-			  q.incorrect_answers[q.incorrect_answers.indexOf(inc)] = decodeURIComponent(inc);
+			q.incorrect_answers[q.incorrect_answers.indexOf(inc)] = decodeURIComponent(inc);
 		}
 		addslashes(q.incorrect_answers[0]);
 		addslashes(q.incorrect_answers[1]);
@@ -424,10 +441,10 @@ function sortAnswers(list: Question[]) {
 
 function shuffleArray(array: any) {
 	for (let i = array.length - 1; i > 0; i--) {
-	  const j = Math.floor(Math.random() * (i + 1));
-	  const temp = array[i];
-	  array[i] = array[j];
-	  array[j] = temp;
+		const j = Math.floor(Math.random() * (i + 1));
+		const temp = array[i];
+		array[i] = array[j];
+		array[j] = temp;
 	}
 	return array;
-  }
+}

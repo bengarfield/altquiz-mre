@@ -1571,7 +1571,7 @@ export default class AltQuiz {
 			});
 			MRE.Actor.CreatePrimitive(app.context, {
 				definition: {
-					shape: MRE.MRE.PrimitiveShape.Box,
+					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: .2, y: .2, z: .02}
 				},
 				addCollider: true,
@@ -2762,8 +2762,8 @@ export default class AltQuiz {
 		}
 		function sortByKey(array: any[], key: string) {
 			return array.sort((a: any, b: any) => {
-			  const x = a[key]; const y = b[key];
-			  return ((x < y) ? -1 : ((x > y) ? 1 : 0));
+				const x = a[key]; const y = b[key];
+				return ((x < y) ? -1 : ((x > y) ? 1 : 0));
 			});
 		}
 		function scaleText(text: string, actor: MRE.Actor) {
