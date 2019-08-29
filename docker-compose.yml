@@ -1,0 +1,25 @@
+version: "3.7"
+services:
+  db:
+    image: postgres:9.6-alpine
+    environment:
+      POSTGRES_USER: altquiz
+      POSTGRES_PASSWORD: cheesyexcitedbobcat
+    networks:
+      internal:
+    volumes:
+      - "dbdata:/var/lib/postgresql/data"
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      database_url: postgresql://altquiz:cheesyexcitedbobcat@db
+    networks:
+      internal:
+    ports:
+      - 3901:3901
+networks:
+  internal:
+volumes:
+  dbdata:
