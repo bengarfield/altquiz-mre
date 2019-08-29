@@ -3,17 +3,20 @@
  * Licensed under the MIT License.
  */
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
-import {QueryResult} from 'pg';
+import { QueryResult } from 'pg';
 import pgescape from 'pg-escape';
 
-import {loadQuestions, query, questionManager} from './db';
+import ColorMaterials from './colorMaterials';
+import { loadQuestions, query, questionManager } from './db';
+import PlayerManager from './playerManager';
 import { Category, Player, Podium, Question } from './types';
 
 export default class AltQuiz {
-	private connectedUsers: MRE.User[] = [];
+	public colors: ColorMaterials;
+	public playerManager: PlayerManager;
+
 	private scene: MRE.Actor = null;
 	private gamemode: string;
-	private modIds: [string] = [''];
 	private currentMod = '';
 	private playerList: Player[] = [];
 	private playerIcons: MRE.Actor = null;
@@ -35,123 +38,13 @@ export default class AltQuiz {
 	private scoresOnScreen = false;
 	private assets: MRE.AssetContainer = new MRE.AssetContainer(this.context);
 
-	constructor(private context: MRE.Context, private params: MRE.ParameterSet, private baseUrl: string) {
-		this.context.onUserJoined(user => this.userJoined(user));
-		this.context.onUserLeft(user => this.userLeft(user));
+	public constructor(public context: MRE.Context, public params: MRE.ParameterSet, public baseUrl: string) {
+		this.colors = new ColorMaterials(context);
+		this.playerManager = new PlayerManager(this);
+
+		this.context.onUserJoined(user => this.playerManager.userJoined(user));
+		this.context.onUserLeft(user => this.playerManager.userLeft(user));
 		this.context.onStarted(() => this.started());
-	}
-
-	private userJoined(user: MRE.User) {
-		console.log(`user-joined: ${user.name}, ${user.id}`);
-		this.connectedUsers.push(user);
-		console.log(`Players Connected: ${this.connectedUsers.length}`);
-		console.log(this.connectedUsers);
-		user.groups.add('notJoined');
-		this.checkForMod();
-	}
-
-	private userLeft(user: MRE.User) {
-		console.log(`user-left: ${user.name}, ${user.id}`);
-		for (const u of this.connectedUsers) {
-			if (u.id === user.id) {
-				this.connectedUsers.splice(this.connectedUsers.indexOf(u), 1);
-			}
-		}
-		console.log(`Players Connected: ${this.connectedUsers.length}`);
-		this.checkForMod();
-	}
-
-	private checkForMod() {
-		let mods = 0;
-		for (const u of this.connectedUsers) {
-			if (u.properties['altspacevr-roles']) {
-				if (u.properties['altspacevr-roles'].includes('moderator')) {
-					mods++;
-				}
-			}
-		}
-		console.log(`${mods} moderators connected.`);
-		// if (mods > 0) {
-		//     this.currentMod = '';
-		// } else if (this.connectedUsers.length > 0) {
-		//     this.currentMod = this.connectedUsers[0].id;
-		//     console.log(`Moderator is ${this.connectedUsers[0].name}`);
-		// }
-		if (this.connectedUsers.length > 0) {
-			if (this.currentMod !== this.connectedUsers[0].id) {
-				this.currentMod = this.connectedUsers[0].id;
-				console.log(`Moderator is ${this.connectedUsers[0].name}`);
-				this.createModPopup(this.connectedUsers[0].id);
-			}
-		}
-	}
-	private createModPopup(userId: string) {
-		const prompt = MRE.Actor.CreatePrimitive(this.context, {
-			definition: {
-				shape: MRE.PrimitiveShape.Box,
-				dimensions: {x: 1, y: 0.5, z: 0}
-			},
-			actor: {
-				exclusiveToUser: userId,
-				attachment: {
-					userId: userId,
-					attachPoint: 'spine-middle'
-				},
-				transform: {local: {
-					position: {y: 0.2, z: 2}
-				}},
-				appearance: {
-					materialId: this.assets.createMaterial('black', {color: MRE.Color3.Black()}).id
-				}
-			}
-		});
-		MRE.Actor.CreateEmpty(this.context, {
-			actor: {
-				parentId: prompt.id,
-				transform: {local: {
-					position: {y: 0.075, z: -0.001}
-				}},
-				text: {
-					contents: 'You are the new\ngame moderator.',
-					justify: MRE.TextJustify.Center,
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.075
-				}
-			}
-		});
-		MRE.Actor.CreateEmpty(this.context, {
-			actor: {
-				parentId: prompt.id,
-				transform: {local: {
-					position: {y: -0.21, z: -0.001}
-				}},
-				text: {
-					contents: 'OK',
-					justify: MRE.TextJustify.Center,
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.0375
-				}
-			}
-		});
-		const button = MRE.Actor.CreatePrimitive(this.context, {
-			definition: {
-				shape: MRE.PrimitiveShape.Box,
-				dimensions: {x: 0.1, y: 0.1, z: 0}
-			},
-			addCollider: true,
-			actor: {
-				parentId: prompt.id,
-				transform: {local: {
-					position: {y: -0.125, z: -0.005}
-				}},
-				appearance: {
-					materialId: this.assets.createMaterial('blue', {color: MRE.Color3.Blue()}).id
-				}
-			}
-		});
-		button.setBehavior(MRE.ButtonBehavior).onButton('pressed', () => {
-			prompt.destroy();
-		});
 	}
 
 	private started = async () => {
@@ -161,18 +54,7 @@ export default class AltQuiz {
 			await questionManager(app);
 			return;
 		}
-		const colors = {
-			black: app.assets.createMaterial('black', {color: MRE.Color3.Black()}),
-			blue: app.assets.createMaterial('black', {color: MRE.Color3.Blue()}),
-			darkGrey: app.assets.createMaterial('grey', {color: new MRE.Color3(0.2, 0.2, 0.2)}),
-			green: app.assets.createMaterial('green', {color: MRE.Color3.Green()}),
-			grey: app.assets.createMaterial('grey', {color: new MRE.Color3(0.4, 0.4, 0.4)}),
-			red: app.assets.createMaterial('red', {color: new MRE.Color3(0.6, 0, 0)}),
-			darkRed: app.assets.createMaterial('darkRed', {color: new MRE.Color3(0.2, 0, 0)}),
-			teal: app.assets.createMaterial('black', {color: MRE.Color3.Teal()}),
-			white: app.assets.createMaterial('black', {color: MRE.Color3.White()}),
-			yellow: app.assets.createMaterial('green', {color: MRE.Color3.Yellow()})
-		};
+		const colors = this.colors;
 		const podiumColors = [
 			app.assets.createMaterial('1', {color: {r: 0, g: 0.2, b: 0.5, a: 1}}),
 			app.assets.createMaterial('2', {color: {r: 0, g: 0.5, b: 0, a: 1}}),
