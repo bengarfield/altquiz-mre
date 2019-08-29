@@ -50,7 +50,7 @@ const categories: Category[] = [
 	{id: 30, name: 'Science: Gadgets'},
 	{id: 31, name: 'Entertainment: Japanese Anime & Manga'},
 	{id: 32, name: 'Entertainment: Cartoon & Animations'}];
-const client = new Client({
+let client = new Client({
 	connectionString: process.env.database_url,
 	ssl: true
 });
@@ -60,7 +60,7 @@ let updating = false;
 export async function questionManager(app: any) {
 	// const {Client} = require('pg');
 	// console.log(pgescape('INSERT INTO %I VALUES(%L)', 'testing', "What breed of dog was 'Marley' in the film 'Marley & Me'?"));
-	client.connect().catch();
+	await checkConnection();
 	await client.query("CREATE TABLE IF NOT EXISTS questionsTest (" +
 		"id SERIAL PRIMARY KEY," +
 		"source varchar(10) NOT NULL," +
@@ -217,21 +217,36 @@ export async function questionManager(app: any) {
 }
 
 let connected = false;
-export async function loadQuestions(): Promise<QueryResult> {
-	if (!connected) {
-		console.log('Connecting to database...');
+async function checkConnection() {
+	if (connected) return;
+	try {
+		console.log('Connecting to DB over SSL');
 		await client.connect();
-		connected = true;
+	} catch {
+		console.log('Failed to connect to DB over SSL; Retrying unencrypted!');
+		client = new Client({
+			connectionString: process.env.database_url,
+			ssl: false
+		});
+		try {
+			await client.connect();
+		} catch {
+			console.error('Could not connect to database!');
+			connected = false;
+			return;
+		}
 	}
+	console.log('Connected');
+	connected = true;
+}
+
+export async function loadQuestions(): Promise<QueryResult> {
+	await checkConnection();
 	return client.query('SELECT * FROM questionsTest ORDER BY RANDOM() LIMIT 50');
 }
 
 export async function query(str: string): Promise<QueryResult> {
-	if (!connected) {
-		console.log('Connecting to database...');
-		await client.connect();
-		connected = true;
-	}
+	await checkConnection();
 	return client.query(str);
 }
 // async function getToken(): Promise<string> {
@@ -257,14 +272,14 @@ function fillDB(token: string, ammount: number, text: MRE.Actor) {
 				for (const q of results) {
 					tempQuestons.push(q);
 					text.text.contents = `Questions loaded: ${tempQuestons.length}`;
-					// const sql = pgescape("INSERT INTO questionsTest(source, categoryId, category, difficulty, question, answer, incorrect1, incorrect2, incorrect3)" +
-					// "VALUES('OpenTDB', " + findCategoryId(q.category) + ", %L, %L, %L, %L, %L, %L, %L)",
-					// q.category, q.difficulty, q.question, q.correct_answer, q.incorrect_answers[0], q.incorrect_answers[1], q.incorrect_answers[2]);
-					// client.query(sql, (err2: any, res2: any) => {
-					//     if (err2 !== null) {
-					//         console.log(err2);
-					//     }
-					// });
+					const sql = pgescape("INSERT INTO questionsTest(source, categoryId, category, difficulty, question, answer, incorrect1, incorrect2, incorrect3)" +
+						"VALUES('OpenTDB', " + findCategoryId(q.category) + ", %L, %L, %L, %L, %L, %L, %L)",
+						q.category, q.difficulty, q.question, q.correct_answer, q.incorrect_answers[0], q.incorrect_answers[1], q.incorrect_answers[2]);
+					client.query(sql, (err2: any, res2: any) => {
+						if (err2 !== null) {
+							console.log(err2);
+						}
+					});
 				}
 				fillDB(token, ammount, text);
 			} else if (body.response_code === 4 && ammount > 0) {
@@ -439,7 +454,7 @@ function sortAnswers(list: Question[]) {
 	}
 }
 
-function shuffleArray(array: any) {
+function shuffleArray<T>(array: T[]) {
 	for (let i = array.length - 1; i > 0; i--) {
 		const j = Math.floor(Math.random() * (i + 1));
 		const temp = array[i];
