@@ -74,7 +74,6 @@ export async function questionManager(app: any) {
 		"incorrect3 varchar(255) NOT NULL)", (err: any, res: any) => {
 		console.log(err, res);
 	});
-	const token = 'a0fbccd6ffd7b378ae4fc7aaa4b4d8a16882f3fb48303c9185caca3957bee47b';
 	const countText = MRE.Actor.CreateEmpty(app.context, {
 		actor: {
 			transform: {
@@ -213,7 +212,7 @@ export async function questionManager(app: any) {
 	//     // console.log(count);
 	//     questionText.value.text.contents =  'Difficulties:\n\n' + str;
 	// });
-	// fillDB(token, 50);
+	// fillDB('', 50);
 }
 
 let connected = false;
