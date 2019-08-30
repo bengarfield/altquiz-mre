@@ -5,6 +5,7 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 
 export default class ColorMaterials {
+	// solid color materials
 	public black: MRE.Material;
 	public blue: MRE.Material;
 	public darkGrey: MRE.Material;

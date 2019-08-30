@@ -18,17 +18,6 @@ export interface Podium {
 	model: Actor;
 }
 
-export interface Player {
-	id: string;
-	name: string;
-	score: number;
-	answered: boolean;
-	answer: number;
-	timeToAnswer: number;
-	screen: Actor;
-	icon: Actor;
-}
-
 export interface Category {
 	id: number;
 	name: string;

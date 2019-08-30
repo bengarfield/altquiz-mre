@@ -5,12 +5,18 @@
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 
 import AltQuiz from './app';
+import { Player } from './player';
 
 export default class PlayerManager {
 	public connectedUsers: MRE.User[] = [];
 	public currentMod: string;
+	public playerList: Player[] = [];
 
-	public constructor(public app: AltQuiz) {}
+	private assets: MRE.AssetContainer;
+
+	public constructor(public app: AltQuiz) {
+		this.assets = new MRE.AssetContainer(this.app.context);
+	}
 
 	public userJoined(user: MRE.User) {
 		console.log(`user-joined: ${user.name}, ${user.id}`);
@@ -23,13 +29,19 @@ export default class PlayerManager {
 
 	public userLeft(user: MRE.User) {
 		console.log(`user-left: ${user.name}, ${user.id}`);
-		for (const u of this.connectedUsers) {
-			if (u.id === user.id) {
-				this.connectedUsers.splice(this.connectedUsers.indexOf(u), 1);
-			}
-		}
+		this.connectedUsers.splice(this.connectedUsers.findIndex(u => u.id === user.id), 1);
 		console.log(`Players Connected: ${this.connectedUsers.length}`);
 		this.checkForMod();
+	}
+
+	public isMod(user: MRE.User) {
+		let appMod = false;
+		if (user.properties['altspacevr-roles']) {
+			if (user.properties['altspacevr-roles'].includes('moderator')) {
+				appMod = true;
+			}
+		}
+		return user.id === this.currentMod || appMod;
 	}
 
 	private checkForMod() {
@@ -58,7 +70,7 @@ export default class PlayerManager {
 	}
 
 	private createModPopup(userId: string) {
-		const prompt = MRE.Actor.CreatePrimitive(this.app.context, {
+		const prompt = MRE.Actor.CreatePrimitive(this.assets, {
 			definition: {
 				shape: MRE.PrimitiveShape.Box,
 				dimensions: {x: 1, y: 0.5, z: 0}
@@ -105,7 +117,7 @@ export default class PlayerManager {
 				}
 			}
 		});
-		const button = MRE.Actor.CreatePrimitive(this.app.context, {
+		const button = MRE.Actor.CreatePrimitive(this.assets, {
 			definition: {
 				shape: MRE.PrimitiveShape.Box,
 				dimensions: {x: 0.1, y: 0.1, z: 0}
@@ -121,7 +133,7 @@ export default class PlayerManager {
 				}
 			}
 		});
-		button.setBehavior(MRE.ButtonBehavior).onButton('pressed', () => {
+		button.setBehavior(MRE.ButtonBehavior).onClick(() => {
 			prompt.destroy();
 		});
 	}
