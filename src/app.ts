@@ -3,20 +3,26 @@
  * Licensed under the MIT License.
  */
 import * as MRE from '@microsoft/mixed-reality-extension-sdk';
-import {QueryResult} from 'pg';
+import { QueryResult } from 'pg';
 import pgescape from 'pg-escape';
 
-import {loadQuestions, query, questionManager} from './db';
-import { Category, Player, Podium, Question } from './types';
+import ColorMaterials from './colorMaterials';
+import { loadQuestions, query, questionManager } from './db';
+import Menu from './menu';
+import PlayerManager from './playerManager';
+import Screen from './screen';
+import SharedAssets from './sharedAssets';
+import { Category, Podium, Question } from './types';
 
 export default class AltQuiz {
-	private connectedUsers: MRE.User[] = [];
-	private scene: MRE.Actor = null;
+	public colors: ColorMaterials;
+	public playerManager: PlayerManager;
+	public scene: MRE.Actor;
+	public screen: Screen;
+	public sharedAssets: SharedAssets;
+	public get playerList() { return this.playerManager.playerList; }
+
 	private gamemode: string;
-	private modIds: [string] = [''];
-	private currentMod = '';
-	private playerList: Player[] = [];
-	private playerIcons: MRE.Actor = null;
 	private podiumList: Podium[] = [
 		{id: null, name: null, score: null, scoreVal: 0, button: null, hasBuzzed: false, joinButton: null, leaveButton: null, screen: null, spotLight: null, model: null},
 		{id: null, name: null, score: null, scoreVal: 0, button: null, hasBuzzed: false, joinButton: null, leaveButton: null, screen: null, spotLight: null, model: null},
@@ -35,144 +41,24 @@ export default class AltQuiz {
 	private scoresOnScreen = false;
 	private assets: MRE.AssetContainer = new MRE.AssetContainer(this.context);
 
-	constructor(private context: MRE.Context, private params: MRE.ParameterSet, private baseUrl: string) {
-		this.context.onUserJoined(user => this.userJoined(user));
-		this.context.onUserLeft(user => this.userLeft(user));
+	public constructor(public context: MRE.Context, public params: MRE.ParameterSet, public baseUrl: string) {
+		this.colors = new ColorMaterials(context);
+		this.playerManager = new PlayerManager(this);
+		this.sharedAssets = new SharedAssets();
+
+		this.context.onUserJoined(user => this.playerManager.userJoined(user));
+		this.context.onUserLeft(user => this.playerManager.userLeft(user));
 		this.context.onStarted(() => this.started());
 	}
 
-	private userJoined(user: MRE.User) {
-		console.log(`user-joined: ${user.name}, ${user.id}`);
-		this.connectedUsers.push(user);
-		console.log(`Players Connected: ${this.connectedUsers.length}`);
-		console.log(this.connectedUsers);
-		user.groups.add('notJoined');
-		this.checkForMod();
-	}
-
-	private userLeft(user: MRE.User) {
-		console.log(`user-left: ${user.name}, ${user.id}`);
-		for (const u of this.connectedUsers) {
-			if (u.id === user.id) {
-				this.connectedUsers.splice(this.connectedUsers.indexOf(u), 1);
-			}
-		}
-		console.log(`Players Connected: ${this.connectedUsers.length}`);
-		this.checkForMod();
-	}
-
-	private checkForMod() {
-		let mods = 0;
-		for (const u of this.connectedUsers) {
-			if (u.properties['altspacevr-roles']) {
-				if (u.properties['altspacevr-roles'].includes('moderator')) {
-					mods++;
-				}
-			}
-		}
-		console.log(`${mods} moderators connected.`);
-		// if (mods > 0) {
-		//     this.currentMod = '';
-		// } else if (this.connectedUsers.length > 0) {
-		//     this.currentMod = this.connectedUsers[0].id;
-		//     console.log(`Moderator is ${this.connectedUsers[0].name}`);
-		// }
-		if (this.connectedUsers.length > 0) {
-			if (this.currentMod !== this.connectedUsers[0].id) {
-				this.currentMod = this.connectedUsers[0].id;
-				console.log(`Moderator is ${this.connectedUsers[0].name}`);
-				this.createModPopup(this.connectedUsers[0].id);
-			}
-		}
-	}
-	private createModPopup(userId: string) {
-		const prompt = MRE.Actor.CreatePrimitive(this.context, {
-			definition: {
-				shape: MRE.PrimitiveShape.Box,
-				dimensions: {x: 1, y: 0.5, z: 0}
-			},
-			actor: {
-				exclusiveToUser: userId,
-				attachment: {
-					userId: userId,
-					attachPoint: 'spine-middle'
-				},
-				transform: {local: {
-					position: {y: 0.2, z: 2}
-				}},
-				appearance: {
-					materialId: this.assets.createMaterial('black', {color: MRE.Color3.Black()}).id
-				}
-			}
-		});
-		MRE.Actor.CreateEmpty(this.context, {
-			actor: {
-				parentId: prompt.id,
-				transform: {local: {
-					position: {y: 0.075, z: -0.001}
-				}},
-				text: {
-					contents: 'You are the new\ngame moderator.',
-					justify: MRE.TextJustify.Center,
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.075
-				}
-			}
-		});
-		MRE.Actor.CreateEmpty(this.context, {
-			actor: {
-				parentId: prompt.id,
-				transform: {local: {
-					position: {y: -0.21, z: -0.001}
-				}},
-				text: {
-					contents: 'OK',
-					justify: MRE.TextJustify.Center,
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.0375
-				}
-			}
-		});
-		const button = MRE.Actor.CreatePrimitive(this.context, {
-			definition: {
-				shape: MRE.PrimitiveShape.Box,
-				dimensions: {x: 0.1, y: 0.1, z: 0}
-			},
-			addCollider: true,
-			actor: {
-				parentId: prompt.id,
-				transform: {local: {
-					position: {y: -0.125, z: -0.005}
-				}},
-				appearance: {
-					materialId: this.assets.createMaterial('blue', {color: MRE.Color3.Blue()}).id
-				}
-			}
-		});
-		button.setBehavior(MRE.ButtonBehavior).onButton('pressed', () => {
-			prompt.destroy();
-		});
-	}
-
-	private started = async () => {
+	private async started() {
 		const app = this;
 		// console.log(app.params);
 		if (app.params.questions !== undefined) {
 			await questionManager(app);
 			return;
 		}
-		const colors = {
-			black: app.assets.createMaterial('black', {color: MRE.Color3.Black()}),
-			blue: app.assets.createMaterial('black', {color: MRE.Color3.Blue()}),
-			darkGrey: app.assets.createMaterial('grey', {color: new MRE.Color3(0.2, 0.2, 0.2)}),
-			green: app.assets.createMaterial('green', {color: MRE.Color3.Green()}),
-			grey: app.assets.createMaterial('grey', {color: new MRE.Color3(0.4, 0.4, 0.4)}),
-			red: app.assets.createMaterial('red', {color: new MRE.Color3(0.6, 0, 0)}),
-			darkRed: app.assets.createMaterial('darkRed', {color: new MRE.Color3(0.2, 0, 0)}),
-			teal: app.assets.createMaterial('black', {color: MRE.Color3.Teal()}),
-			white: app.assets.createMaterial('black', {color: MRE.Color3.White()}),
-			yellow: app.assets.createMaterial('green', {color: MRE.Color3.Yellow()})
-		};
+		const colors = this.colors;
 		const podiumColors = [
 			app.assets.createMaterial('1', {color: {r: 0, g: 0.2, b: 0.5, a: 1}}),
 			app.assets.createMaterial('2', {color: {r: 0, g: 0.5, b: 0, a: 1}}),
@@ -198,349 +84,35 @@ export default class AltQuiz {
 
 		app.scene = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'scene'}});
 
+		await this.sharedAssets.load(this.context, this.baseUrl);
+
 		const screenModel = new MRE.AssetContainer(app.context);
 		await screenModel.loadGltf(app.baseUrl + '/screen.glb');
 		const answerButtonModel = new MRE.AssetContainer(app.context);
 		await answerButtonModel.loadGltf(app.baseUrl + '/answerButton.glb', 'mesh');
 		const answerButtonModel2 = new MRE.AssetContainer(app.context);
-		await answerButtonModel2.loadGltf(app.baseUrl + '/answerButton2.glb', 'none');
-		const squareButtonModel = new MRE.AssetContainer(app.context);
-		await squareButtonModel.loadGltf(app.baseUrl + '/menuButtonSquare.glb', 'mesh');
+		await answerButtonModel2.loadGltf(app.baseUrl + '/answerButton2.glb');
+
 		const podiumModel = new MRE.AssetContainer(app.context);
 		await podiumModel.loadGltf(app.baseUrl + '/podium.glb');
 		const podiumButtonModel = new MRE.AssetContainer(app.context);
 		await podiumButtonModel.loadGltf(app.baseUrl + '/button.glb', 'mesh');
 		const crownModel = new MRE.AssetContainer(app.context);
 		await crownModel.loadGltf(app.baseUrl + '/crown.glb');
-		const logoTex = app.assets.createTexture('logo', {uri: app.baseUrl + '/textures/logo.png'});
-		const logoMat = app.assets.createMaterial('logo', {mainTextureId: logoTex.id});
 
 		if (app.params.big !== undefined) {
 			extrasEnabled = true;
 			startClassic().catch();
 		} else if (app.params.classic !== undefined) {
 			startClassic().catch();
-		} else if (app.params.party !== undefined) {
-			createMenu('party');
 		} else {
-			createMenu();
-		}
-
-		function createMenu(mode = 'default') {
-			screenModel.materials[1].mainTextureOffset.set(0.5, 0);
-			screenModel.materials[1].color = colors.white.color;
-			const screen = MRE.Actor.CreateFromPrefab(app.context, {
-				prefabId: screenModel.prefabs[0].id,
-				actor: {
-					name: 'screen',
-					parentId: app.scene.id,
-					transform: {local: {
-						position: {y: 2, z: 0.025},
-						scale: {x: 0.5, y: 0.5, z: 0.5},
-						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Up(), 180 * MRE.DegreesToRadians)
-					}}
-				}
-			});
-
-			const menu = MRE.Actor.CreatePrimitive(app.context, {
-				definition: {
-					shape: MRE.PrimitiveShape.Box,
-					dimensions: {x: 3.2, y: 1.8, z: 0}
-				},
-				actor: {
-					name: 'menu',
-					parentId: app.scene.id,
-					transform: {local: {
-						position: {y: 2}
-					}},
-					appearance: {
-						materialId: colors.black.id
-					}
-				}
-			});
-			MRE.Actor.CreatePrimitive(app.context, {
-				definition: {
-					shape: MRE.PrimitiveShape.Plane,
-					dimensions: {x: 2.4, y: 1, z: 1.2}
-				},
-				actor: {
-					parentId: menu.id,
-					transform: {local: {
-						position: {y: 0.4, z: -0.01},
-						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
-					}},
-					appearance: {
-						materialId: logoMat.id
-					}
-				}
-			});
-			if (app.params.party !== undefined) {
-				createPartyMenu();
-			} else {
-				createDefaultMenu();
-			}
-
-			function createDefaultMenu() {
-				const menuButton1c = MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						name: 'button1',
-						parentId: menu.id,
-						transform: {local: {
-							position: {y: -0.35, z: -0.001}
-						}}
-					}
-				});
-				const menuButton1 = MRE.Actor.CreateFromPrefab(app.context, {
-					prefabId: answerButtonModel.prefabs[0].id,
-					actor: {
-						parentId: menuButton1c.id
-					}
-				});
-				const menuButton2c = MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						name: 'button2',
-						parentId: menu.id,
-						transform: {local: {
-							position: {y: -0.7, z: -0.001}
-						}}
-					}
-				});
-				const menuButton2 = MRE.Actor.CreateFromPrefab(app.context, {
-					prefabId: answerButtonModel.prefabs[0].id,
-					actor: {
-						parentId: menuButton2c.id
-					}
-				});
-
-				menuButton1.setBehavior(MRE.ButtonBehavior).onButton('pressed', async (user: MRE.User) => {
-					if (isMod(user)) {
-						menu.children[1].destroy();
-						menu.children[1].destroy();
-						createPartyMenu();
-					}
-				});
-				menuButton2.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-					if (isMod(user)) {
-						menu.destroy();
-						screen.destroy();
-						startClassic().catch();
-					}
-				});
-				MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						parentId: menuButton1c.id,
-						transform: {local: {
-							position: {y: 0.04, z: -0.005}
-						}},
-						text: {
-							contents: 'Party Mode',
-							anchor: MRE.TextAnchorLocation.MiddleCenter,
-							height: 0.1
-						}
-					}
-				});
-				MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						parentId: menuButton1c.id,
-						transform: {local: {
-							position: {y: -0.06, z: -0.005}
-						}},
-						text: {
-							contents: '10+ Players, No Host',
-							anchor: MRE.TextAnchorLocation.MiddleCenter,
-							height: 0.04
-						}
-					}
-				});
-				MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						parentId: menuButton2c.id,
-						transform: {local: {
-							position: {y: 0.04, z: -0.005}
-						}},
-						text: {
-							contents: 'Classic Mode',
-							anchor: MRE.TextAnchorLocation.MiddleCenter,
-							height: 0.1
-						}
-					}
-				});
-				MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						parentId: menuButton2c.id,
-						transform: {local: {
-							position: {y: -0.06, z: -0.005}
-						}},
-						text: {
-							contents: 'Gameshow Experience. 5 Players, 1 Host',
-							anchor: MRE.TextAnchorLocation.MiddleCenter,
-							height: 0.04
-						}
-					}
-				});
-			}
-			function createPartyMenu() {
-				if (app.params.party === undefined) {
-					const backButton = MRE.Actor.CreateFromPrefab(app.context, {
-						prefabId: squareButtonModel.prefabs[0].id,
-						actor: {
-							parentId: menu.id,
-							transform: {local: {
-								position: {x: -1.55, y: 0.7, z: -0.001}
-							}}
-						}
-					});
-					backButton.setBehavior(MRE.ButtonBehavior).onClick((user: MRE.User) => {
-						if (isMod(user)) {
-							backButton.destroy();
-							menuButton1c.destroy();
-							menuButton2c.destroy();
-							app.playerList = [];
-							app.playerIcons.destroy();
-							createDefaultMenu();
-						}
-					});
-					MRE.Actor.CreateEmpty(app.context, {
-						actor: {
-							parentId: backButton.id,
-							transform: {local: {
-								position: {x: -0.02, z: -0.005},
-								scale: {y: 1.5}
-							}},
-							text: {
-								contents: '<',
-								anchor: MRE.TextAnchorLocation.MiddleCenter,
-								height: 0.1
-							}
-						}
-					});
-					MRE.Actor.CreateEmpty(app.context, {
-						actor: {
-							parentId: backButton.id,
-							transform: {local: {
-								position: {y: 0.002, z: -0.005},
-								scale: {x: 3, y: 1.5}
-							}},
-							text: {
-								contents: '-',
-								anchor: MRE.TextAnchorLocation.MiddleCenter,
-								height: 0.1
-							}
-						}
-					});
-				}
-				const menuButton1c = MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						name: 'button1',
-						parentId: menu.id,
-						transform: {local: {
-							position: {y: -0.35, z: -0.001}
-						}}
-					}
-				});
-				const menuButton1 = MRE.Actor.CreateFromPrefab(app.context, {
-					prefabId: answerButtonModel.prefabs[0].id,
-					actor: {
-						parentId: menuButton1c.id
-					}
-				});
-				const menuButton2c = MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						name: 'button2',
-						parentId: menu.id,
-						transform: {local: {
-							position: {y: -0.7, z: -0.001}
-						}}
-					}
-				});
-				const menuButton2 = MRE.Actor.CreateFromPrefab(app.context, {
-					prefabId: answerButtonModel.prefabs[0].id,
-					actor: {
-						parentId: menuButton2c.id
-					}
-				});
-				app.playerIcons = MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						name: 'playerIcons',
-						parentId: app.scene.id,
-						transform: {local: {
-							position: {y: 1.09, z: 0.009}
-						}}
-					}
-				});
-				menuButton1.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user2: MRE.User) => {
-					console.log('join');
-					let joined = false;
-					for (const p of app.playerList) {
-						if (p.id === user2.id) {
-							joined = true;
-						}
-					}
-					if (!joined) {
-						const icon = createPlayerIcon(user2.name);
-						app.playerList.push({id: user2.id, name: user2.name, score: 0, answered: false, answer: null, timeToAnswer: 0, screen: null, icon: icon});
-						// const icon2 = createPlayerIcon('2');
-						// app.playerList.push({id: '123', name: '2', score: 123, answered: false, answer: null, timeToAnswer: 0, screen: null, icon: icon2});
-						// const icon3 = createPlayerIcon('3');
-						// app.playerList.push({id: '1234', name: '3', score: 234, answered: false, answer: null, timeToAnswer: 0, screen: null, icon: icon3});
-						// const icon4 = createPlayerIcon('4');
-						// app.playerList.push({id: '12345', name: '4', score: 10, answered: false, answer: null, timeToAnswer: 0, screen: null, icon: icon4});
-						menuButton1c.children[2].text.contents = `Players joined: ${app.playerList.length}`;
-					}
-				});
-				menuButton2.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-					if (isMod(user) && app.playerList.length > 0) {
-						menu.destroy();
-						startNew().catch();
-					}
-				});
-				getCategories().catch();
-				MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						parentId: menuButton1c.id,
-						transform: {local: {
-							position: {y: 0.04, z: -0.005}
-						}},
-						text: {
-							contents: 'Join Game',
-							anchor: MRE.TextAnchorLocation.MiddleCenter,
-							height: 0.1
-						}
-					}
-				});
-				MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						parentId: menuButton1c.id,
-						transform: {local: {
-							position: {y: -0.06, z: -0.005}
-						}},
-						text: {
-							contents: 'Players joined: 0',
-							anchor: MRE.TextAnchorLocation.MiddleCenter,
-							height: 0.04
-						}
-					}
-				});
-				MRE.Actor.CreateEmpty(app.context, {
-					actor: {
-						parentId: menuButton2c.id,
-						transform: {local: {
-							position: {z: -0.005}
-						}},
-						text: {
-							contents: 'Start Game',
-							anchor: MRE.TextAnchorLocation.MiddleCenter,
-							height: 0.1
-						}
-					}
-				});
-			}
+			const menu = new Menu(this, () => startClassic().catch(), () => startNew().catch());
 		}
 
 		async function startNew() {
 			app.gamemode = 'new';
 			let timeLeft = 0;
-			MRE.Actor.CreatePrimitive(app.context, {
+			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: 3.2, y: 1.8, z: 0}
@@ -648,7 +220,7 @@ export default class AltQuiz {
 				console.log(sql);
 				loadedQuestions = await query(sql);
 				// app.categories.splice(0, 1);
-				removeCategory(catId);
+				app.removeCategory(catId);
 				time(5, 'start');
 			}
 			function time(count: number, next: string) {
@@ -716,7 +288,7 @@ export default class AltQuiz {
 							setTimeout(() => {
 								let nextButton: MRE.Actor;
 								if (app.categories.hard.length > 0) {
-									nextButton = MRE.Actor.CreatePrimitive(app.context, {
+									nextButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 										definition: {
 											shape: MRE.PrimitiveShape.Box,
 											dimensions: {x: 0.2, y: 0.2, z: 0.01}
@@ -744,7 +316,7 @@ export default class AltQuiz {
 										}
 									});
 									nextButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-										if (isMod(user)) {
+										if (app.playerManager.isMod(user)) {
 											for (const p of app.playerList) {
 												p.icon.findChildrenByName('scoreBar', true)[0].destroy();
 												p.icon.findChildrenByName('scoreText', true)[0].destroy();
@@ -765,7 +337,7 @@ export default class AltQuiz {
 										}
 									});
 								}
-								const endButton = MRE.Actor.CreatePrimitive(app.context, {
+								const endButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 									definition: {
 										shape: MRE.PrimitiveShape.Box,
 										dimensions: {x: 0.2, y: 0.2, z: 0.01}
@@ -793,7 +365,7 @@ export default class AltQuiz {
 									}
 								});
 								endButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-									if (isMod(user)) {
+									if (app.playerManager.isMod(user)) {
 										for (const p of app.playerList) {
 											p.icon.findChildrenByName('scoreBar', true)[0].destroy();
 											p.icon.findChildrenByName('scoreText', true)[0].destroy();
@@ -813,12 +385,12 @@ export default class AltQuiz {
 										}
 										endButton.children[0].text.contents = 'Back to Menu';
 										endButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user2: MRE.User) => {
-											if (isMod(user2)) {
-												app.playerList = [];
+											if (app.playerManager.isMod(user2)) {
+												app.playerManager.playerList = [];
 												app.scene.destroy();
 												app.scene = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'scene'}});
 												soundPlayer = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'sound', parentId: app.scene.id}});
-												createMenu();
+												const menu = new Menu(app, () => startClassic(), () => startNew());
 											}
 										});
 									}
@@ -910,7 +482,7 @@ export default class AltQuiz {
 			}
 			// let questionsLoaded = false;
 
-			getCategories().catch();
+			app.getCategories().catch();
 
 			// set up cameras
 			if (extrasEnabled) {
@@ -940,90 +512,6 @@ export default class AltQuiz {
 			}
 		}
 
-		function createPlayerIcon(name: string): MRE.Actor {
-			let offset = 0.5;
-			app.playerIcons.transform.local.position.x = app.playerList.length * offset * -0.5;
-			if (app.playerList.length > 7) {
-				app.playerIcons.transform.local.position.x = -1.75;
-				offset = 3.5 / app.playerList.length;
-				for (const icon of app.playerIcons.children) {
-					icon.transform.local.position.x = app.playerIcons.children.indexOf(icon) * offset;
-				}
-			}
-			const iconBase = MRE.Actor.CreatePrimitive(app.context, {
-				definition: {
-					shape: MRE.PrimitiveShape.Cylinder,
-					dimensions: {x: 0, y: 0, z: 0.001},
-					radius: 0.06
-				},
-				addCollider: true,
-				actor: {
-					parentId: app.playerIcons.id,
-					transform: {local: {
-						position: {x: app.playerList.length * offset, z: -0.01}
-					}}
-				}
-			});
-			MRE.Actor.CreatePrimitive(app.context, {
-				definition: {
-					shape: MRE.PrimitiveShape.Cylinder,
-					dimensions: {x: 0, y: 0, z: 0.001},
-					radius: 0.05
-				},
-				actor: {
-					parentId: iconBase.id,
-					transform: {local: {
-						position: {z: -0.001}
-					}},
-					appearance: {
-						materialId: colors.black.id
-					}
-				}
-			});
-			MRE.Actor.CreateEmpty(app.context, {
-				actor: {
-					parentId: iconBase.id,
-					transform: {local: {
-						position: {z: -0.002}
-					}},
-					text: {
-						contents: name.substr(0, 1),
-						height: 0.075,
-						anchor: MRE.TextAnchorLocation.MiddleCenter,
-						justify: MRE.TextJustify.Center
-					}
-				}
-			});
-			const hoverLabels: {[id: string]: MRE.Actor} = {};
-			const iconHover = iconBase.setBehavior(MRE.ButtonBehavior);
-			iconHover.onHover('enter', (user: MRE.User) => {
-				if (hoverLabels[user.id] === undefined) {
-					hoverLabels[user.id] = MRE.Actor.CreateEmpty(app.context, {
-						actor: {
-							parentId: iconBase.id,
-							exclusiveToUser: user.id,
-							transform: {local: {
-								position: {y: -0.09}
-							}},
-							text: {
-								contents: name,
-								height: 0.04,
-								anchor: MRE.TextAnchorLocation.MiddleCenter,
-								justify: MRE.TextJustify.Center
-							}
-						}
-					});
-				}
-			});
-			iconHover.onHover('exit', (user: MRE.User) => {
-				if (hoverLabels[user.id] !== undefined) {
-					hoverLabels[user.id].destroy();
-					delete hoverLabels[user.id];
-				}
-			});
-			return iconBase;
-		}
-
 		function moveCamera(dest: number, cam: MRE.Actor) {
 			if (extrasEnabled) {
 				if (dest === -1) {
@@ -1042,60 +530,6 @@ export default class AltQuiz {
 							}
 						}
 					}, 1, MRE.AnimationEaseCurves.EaseOutQuadratic);
-				}
-			}
-		}
-
-		function isMod(user: MRE.User) {
-			let appMod = false;
-			if (user.properties['altspacevr-roles']) {
-				if (user.properties['altspacevr-roles'].includes('moderator')) {
-					appMod = true;
-				}
-			}
-			return user.id === app.currentMod || appMod;
-		}
-
-		async function getCategories() {
-			const cats = await query('SELECT DISTINCT categoryid, category FROM questionsTest ORDER BY categoryid');
-			const counts = await query('SELECT categoryid, category, difficulty, count(*) FROM questionsTest GROUP by categoryid, category, difficulty ORDER BY count DESC');
-			console.log(cats.rows, cats.rowCount, counts.rows);
-			app.categories.easy = [];
-			app.categories.medium = [];
-			app.categories.hard = [];
-			for (const cat of cats.rows) {
-				app.categoryRef[cat.categoryid] = cat.category;
-			}
-			for (const cat of counts.rows) {
-				if (Number(cat.count) > 9) {
-					if (cat.difficulty === 'easy') {
-						app.categories.easy.push({id: cat.categoryid, name: cat.category});
-					} else if (cat.difficulty === 'medium') {
-						app.categories.medium.push({id: cat.categoryid, name: cat.category});
-					} else if (cat.difficulty === 'hard') {
-						app.categories.hard.push({id: cat.categoryid, name: cat.category});
-					}
-				}
-			}
-			removeCategory(10);
-			console.log(app.categories);
-			console.log(app.categoryRef);
-		}
-
-		function removeCategory(catId: number) {
-			for (const cat of app.categories.easy) {
-				if (cat.id === catId) {
-					app.categories.easy.splice(app.categories.easy.indexOf(cat), 1);
-				}
-			}
-			for (const cat of app.categories.medium) {
-				if (cat.id === catId) {
-					app.categories.medium.splice(app.categories.medium.indexOf(cat), 1);
-				}
-			}
-			for (const cat of app.categories.hard) {
-				if (cat.id === catId) {
-					app.categories.hard.splice(app.categories.hard.indexOf(cat), 1);
 				}
 			}
 		}
@@ -1130,7 +564,7 @@ export default class AltQuiz {
 			showLogo();
 			app.mode = 'title';
 			selectAnswer(-1, true, false);
-			getCategories().catch();
+			app.getCategories().catch();
 		}
 
 		function giveCrown(userId: string) {
@@ -1235,7 +669,7 @@ export default class AltQuiz {
 			app.podiumList[num].model.findChildrenByName('base', true)[0].children[0].appearance.material = podiumColors[num];
 			setStripes(num, 'black');
 			// }
-			app.podiumList[num].joinButton = MRE.Actor.CreatePrimitive(app.context, {
+			app.podiumList[num].joinButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Sphere
 				},
@@ -1261,7 +695,7 @@ export default class AltQuiz {
 					app.podiumList[num].name.text.contents = user.name.length < 10 ? user.name : user.name.substr(0, 10) + '...';
 					app.podiumList[num].score.text.contents = '0';
 					user.groups.delete('notJoined');
-					app.podiumList[num].leaveButton = MRE.Actor.CreatePrimitive(app.context, {
+					app.podiumList[num].leaveButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 						definition: {
 							shape: MRE.PrimitiveShape.Sphere
 						},
@@ -1385,7 +819,7 @@ export default class AltQuiz {
 			await buttonModel.created();
 			assignMat(buttonModel, colors.darkRed);
 			app.podiumList[num].button = buttonModel;
-			const buttonBackup = MRE.Actor.CreatePrimitive(app.context, {
+			const buttonBackup = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: 0.3, y: 0.05, z: 0.35}
@@ -1452,11 +886,10 @@ export default class AltQuiz {
 		}
 
 		async function createHostPodium() {
-			MRE.Actor.CreatePrimitive(app.context, {
+			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Cylinder,
-					radius: 0.025,
-					dimensions: {x: 0, y: 1.15, z: 0}
+					dimensions: {x: 0.025, y: 1.15, z: 0.025}
 				},
 				actor: {
 					parentId: hostPodium.id,
@@ -1479,7 +912,7 @@ export default class AltQuiz {
 					}}
 				}
 			});
-			MRE.Actor.CreatePrimitive(app.context, {
+			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: 0.64, y: 0.36, z: 0.01}
@@ -1523,7 +956,7 @@ export default class AltQuiz {
 					}}
 				}
 			});
-			const screen1 = MRE.Actor.CreatePrimitive(app.context, {
+			const screen1 = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: 3.2, y: 1.8, z: 0}
@@ -1539,7 +972,7 @@ export default class AltQuiz {
 					}
 				}
 			});
-			const screen3 = MRE.Actor.CreatePrimitive(app.context, {
+			const screen3 = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: 3.2, y: 1.8, z: 0}
@@ -1569,7 +1002,7 @@ export default class AltQuiz {
 					}
 				}
 			});
-			MRE.Actor.CreatePrimitive(app.context, {
+			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: .2, y: .2, z: .02}
@@ -1596,10 +1029,10 @@ export default class AltQuiz {
 					}
 				}
 			});
-			const hostJoinShere = MRE.Actor.CreatePrimitive(app.context, {
+			const hostJoinShere = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Sphere,
-					radius: 0.25
+					dimensions: { x: 0.25, y: 0.25, z: 0.25 }
 				},
 				addCollider: true,
 				actor: {
@@ -1623,7 +1056,7 @@ export default class AltQuiz {
 				}
 			});
 
-			const hostButton = MRE.Actor.CreatePrimitive(app.context, {
+			const hostButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: .2, y: .2, z: .02}
@@ -1647,7 +1080,7 @@ export default class AltQuiz {
 					app.currentHost = user;
 					hostText.text.contents = `Host: ${app.currentHost.name}`;
 					hostPodium.findChildrenByName('hostJoinButton', true)[0].appearance.materialId = colors.red.id;
-				} else if (app.currentHost.id === user.id || isMod(user)) {
+				} else if (app.currentHost.id === user.id || app.playerManager.isMod(user)) {
 					clearHost();
 					hostJoinShere.transform.local.scale.setAll(1);
 					if (!leftHidden) slideHostPanel('left', 0);
@@ -1673,7 +1106,7 @@ export default class AltQuiz {
 				}
 			});
 
-			MRE.Actor.CreatePrimitive(app.context, {
+			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: .2, y: .2, z: .02}
@@ -1691,7 +1124,7 @@ export default class AltQuiz {
 					}
 				}
 			}).setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-				if (user.id === app.currentHost.id || isMod(user)) {
+				if (user.id === app.currentHost.id || app.playerManager.isMod(user)) {
 					resetGame();
 				}
 			});
@@ -1712,7 +1145,7 @@ export default class AltQuiz {
 			});
 
 			if (app.params.classic === undefined) {
-				MRE.Actor.CreatePrimitive(app.context, {
+				MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 					definition: {
 						shape: MRE.PrimitiveShape.Box,
 						dimensions: {x: .2, y: .2, z: .02}
@@ -1728,12 +1161,12 @@ export default class AltQuiz {
 						appearance: {}
 					}
 				}).setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-					if (user.id === app.currentHost.id || isMod(user)) {
+					if (user.id === app.currentHost.id || app.playerManager.isMod(user)) {
 						resetGame();
 						app.scene.destroy();
 						app.scene = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'scene'}});
 						soundPlayer = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'sound', parentId: app.scene.id}});
-						createMenu();
+						const menu = new Menu(app, () => startClassic().catch(), () => startNew().catch());
 					}
 				});
 				MRE.Actor.CreateEmpty(app.context, {
@@ -1821,7 +1254,7 @@ export default class AltQuiz {
 						}
 					}
 				});
-				MRE.Actor.CreatePrimitive(app.context, {
+				MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 					definition: {
 						shape: MRE.PrimitiveShape.Plane,
 						dimensions: {x: .8, y: 1, z: .15}
@@ -1839,7 +1272,7 @@ export default class AltQuiz {
 						}
 					}
 				});
-				MRE.Actor.CreatePrimitive(app.context, {
+				MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 					definition: {
 						shape: MRE.PrimitiveShape.Box,
 						dimensions: {x: .1, y: .1, z: .01}
@@ -1855,7 +1288,7 @@ export default class AltQuiz {
 						}
 					}
 				}).setBehavior(MRE.ButtonBehavior).onClick((user: MRE.User) => {
-					if (isMod(user) || user.id === app.currentHost.id) {
+					if (app.playerManager.isMod(user) || user.id === app.currentHost.id) {
 						if (app.podiumList[i].id !== null) {
 							app.podiumList[i].scoreVal--;
 							app.podiumList[i].score.text.contents = app.podiumList[i].scoreVal.toString();
@@ -1863,7 +1296,7 @@ export default class AltQuiz {
 						}
 					}
 				});
-				MRE.Actor.CreatePrimitive(app.context, {
+				MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 					definition: {
 						shape: MRE.PrimitiveShape.Box,
 						dimensions: {x: .1, y: .1, z: .01}
@@ -1879,7 +1312,7 @@ export default class AltQuiz {
 						}
 					}
 				}).setBehavior(MRE.ButtonBehavior).onClick((user: MRE.User) => {
-					if (isMod(user) || user.id === app.currentHost.id) {
+					if (app.playerManager.isMod(user) || user.id === app.currentHost.id) {
 						if (app.podiumList[i].id !== null) {
 							app.podiumList[i].scoreVal++;
 							app.podiumList[i].score.text.contents = app.podiumList[i].scoreVal.toString();
@@ -1887,7 +1320,7 @@ export default class AltQuiz {
 						}
 					}
 				});
-				MRE.Actor.CreatePrimitive(app.context, {
+				MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 					definition: {
 						shape: MRE.PrimitiveShape.Box,
 						dimensions: {x: .1, y: .1, z: .01}
@@ -1903,7 +1336,7 @@ export default class AltQuiz {
 						}
 					}
 				}).setBehavior(MRE.ButtonBehavior).onClick((user: MRE.User) => {
-					if (isMod(user) || user.id === app.currentHost.id) {
+					if (app.playerManager.isMod(user) || user.id === app.currentHost.id) {
 						if (app.podiumList[i].id !== null) {
 							leaveGame(app.podiumList[i]);
 						}
@@ -1921,7 +1354,7 @@ export default class AltQuiz {
 					}}
 				}
 			});
-			MRE.Actor.CreatePrimitive(app.context, {
+			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: .64, y: 0, z: .2}
@@ -1939,12 +1372,11 @@ export default class AltQuiz {
 					}
 				}
 			});
-			const showLeftButton = MRE.Actor.CreatePrimitive(app.context, {
+			const showLeftButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
-					shape: MRE.PrimitiveShape.Cylinder,
+					shape: MRE.PrimitiveShape.Sphere,
 					uSegments: 3,
-					dimensions: {x: .001, y: .01, z: .001},
-					radius: 0.025
+					dimensions: {x: .025, y: .025, z: .025}
 				},
 				addCollider: true,
 				actor: {
@@ -1963,7 +1395,7 @@ export default class AltQuiz {
 			});
 			let leftHidden = true;
 			showLeftButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-				if (isMod(user) || user.id === app.currentHost.id) {
+				if (app.playerManager.isMod(user) || user.id === app.currentHost.id) {
 					if (leftHidden) {
 						slideHostPanel('left', 1);
 					} else {
@@ -1972,12 +1404,11 @@ export default class AltQuiz {
 					leftHidden = !leftHidden;
 				}
 			});
-			const showRightButton = MRE.Actor.CreatePrimitive(app.context, {
+			const showRightButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
-					shape: MRE.PrimitiveShape.Cylinder,
+					shape: MRE.PrimitiveShape.Sphere,
 					uSegments: 3,
-					dimensions: {x: .001, y: .01, z: .001},
-					radius: 0.025
+					dimensions: {x: .025, y: .025, z: .025}
 				},
 				addCollider: true,
 				actor: {
@@ -1996,7 +1427,7 @@ export default class AltQuiz {
 			});
 			let rightHidden = true;
 			showRightButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
-				if (isMod(user) || user.id === app.currentHost.id) {
+				if (app.playerManager.isMod(user) || user.id === app.currentHost.id) {
 					if (rightHidden) {
 						slideHostPanel('right', 1);
 					} else {
@@ -2040,7 +1471,7 @@ export default class AltQuiz {
 					button.transform.local.rotation = MRE.Quaternion.RotationAxis(MRE.Vector3.Up(), (side === 'left' ? -90 : 90) * MRE.DegreesToRadians);
 				}
 			}
-			const resetButton = MRE.Actor.CreatePrimitive(app.context, {
+			const resetButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: .04, y: .02, z: .04}
@@ -2079,7 +1510,7 @@ export default class AltQuiz {
 					screenModel.materials[1].color = colors.black.color;
 				}
 			});
-			const nextButton = await MRE.Actor.CreatePrimitive(app.context, {
+			const nextButton = await MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: .06, y: .02, z: .06}
@@ -2102,7 +1533,7 @@ export default class AltQuiz {
 			const next = nextButton.setBehavior(MRE.ButtonBehavior);
 			next.onButton('pressed', async (user: MRE.User) => {
 				// let catList = app.categories.easy;
-				if (isMod(user) || user.id === app.currentHost.id) {
+				if (app.playerManager.isMod(user) || user.id === app.currentHost.id) {
 					if (app.mode === 'title') {
 						hideLogo();
 						app.currentRound++;
@@ -2118,7 +1549,7 @@ export default class AltQuiz {
 							console.log(`Load questions for category: ${currentDifficulty().cats[selectedAnswer].name}`);
 							loadedQuestions = await query(pgescape("SELECT * FROM questionsTest WHERE category = %L AND difficulty = %L ORDER BY RANDOM() LIMIT 5", currentDifficulty().cats[selectedAnswer].name, currentDifficulty().diff));
 							console.log(loadedQuestions);
-							removeCategory(currentDifficulty().cats[selectedAnswer].id);
+							app.removeCategory(currentDifficulty().cats[selectedAnswer].id);
 							// app.categories.splice(selectedAnswer, 1);
 							app.mode = 'question';
 							currentQuestion = 0;
@@ -2224,7 +1655,7 @@ export default class AltQuiz {
 				}
 			});
 			if (app.gamemode === 'classic') {
-				MRE.Actor.CreatePrimitive(app.context, {
+				MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 					definition: {
 						shape: MRE.PrimitiveShape.Plane,
 						dimensions: {x: 3, y: 1, z: 1.5}
@@ -2236,7 +1667,7 @@ export default class AltQuiz {
 							rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
 						}},
 						appearance: {
-							materialId: logoMat.id
+							materialId: app.sharedAssets.logoMat.id
 						}
 					}
 				});
@@ -2347,7 +1778,7 @@ export default class AltQuiz {
 					}
 				});
 				button.created().then(() => {
-					button.children[1].children[0].appearance.material = answerColors[i];
+					button.children[1].appearance.material = answerColors[i];
 				}).catch();
 				if (app.gamemode === 'new') {
 					const selectedBorder = MRE.Actor.CreateFromPrefab(app.context, {
@@ -2361,8 +1792,8 @@ export default class AltQuiz {
 						}
 					});
 					selectedBorder.created().then(() => {
-						selectedBorder.children[0].children[0].appearance.enabled = new MRE.GroupMask(app.context, [`answered${letters[i].substr(0, 1)}`]);
-						selectedBorder.children[0].children[0].appearance.material.color = colors.teal.color;
+						selectedBorder.children[0].appearance.enabled = new MRE.GroupMask(app.context, [`answered${letters[i].substr(0, 1)}`]);
+						selectedBorder.children[0].appearance.material.color = colors.teal.color;
 					}).catch();
 				}
 			}
@@ -2434,10 +1865,10 @@ export default class AltQuiz {
 			console.log(question.question);
 			console.log(question.answer);
 			if (app.gamemode === 'new') {
-				mainScreen.findChildrenByName('answer0BorderSelected', true)[0].children[0].children[0].appearance.material = colors.teal;
-				mainScreen.findChildrenByName('answer1BorderSelected', true)[0].children[0].children[0].appearance.material = colors.teal;
-				mainScreen.findChildrenByName('answer2BorderSelected', true)[0].children[0].children[0].appearance.material = colors.teal;
-				mainScreen.findChildrenByName('answer3BorderSelected', true)[0].children[0].children[0].appearance.material = colors.teal;
+				mainScreen.findChildrenByName('answer0BorderSelected', true)[0].children[0].appearance.material = colors.teal;
+				mainScreen.findChildrenByName('answer1BorderSelected', true)[0].children[0].appearance.material = colors.teal;
+				mainScreen.findChildrenByName('answer2BorderSelected', true)[0].children[0].appearance.material = colors.teal;
+				mainScreen.findChildrenByName('answer3BorderSelected', true)[0].children[0].appearance.material = colors.teal;
 				for (const p of app.playerList) {
 					setTimeout(() => {
 						p.answered = false;
@@ -2505,10 +1936,10 @@ export default class AltQuiz {
 			}
 
 			if (app.gamemode === 'new') {
-				mainScreen.findChildrenByName('answer0BorderSelected', true)[0].children[0].children[0].appearance.material = colors.red;
-				mainScreen.findChildrenByName('answer1BorderSelected', true)[0].children[0].children[0].appearance.material = colors.red;
-				mainScreen.findChildrenByName('answer2BorderSelected', true)[0].children[0].children[0].appearance.material = colors.red;
-				mainScreen.findChildrenByName('answer3BorderSelected', true)[0].children[0].children[0].appearance.material = colors.red;
+				mainScreen.findChildrenByName('answer0BorderSelected', true)[0].children[0].appearance.material = colors.red;
+				mainScreen.findChildrenByName('answer1BorderSelected', true)[0].children[0].appearance.material = colors.red;
+				mainScreen.findChildrenByName('answer2BorderSelected', true)[0].children[0].appearance.material = colors.red;
+				mainScreen.findChildrenByName('answer3BorderSelected', true)[0].children[0].appearance.material = colors.red;
 				for (const p of app.playerList) {
 					if (p.answered) {
 						if (p.answer === correctAnswer) {
@@ -2550,7 +1981,7 @@ export default class AltQuiz {
 		}
 
 		function createConfirmButton(screen: MRE.Actor): MRE.Actor {
-			const button = MRE.Actor.CreatePrimitive(app.context, {
+			const button = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
 					dimensions: {x: 0.15, y: 0.15, z: 0.02}
@@ -2694,7 +2125,7 @@ export default class AltQuiz {
 			}
 			for (const p of app.playerList) {
 				const scoreVal = p.score > 0 ? p.score : 1;
-				const bar = MRE.Actor.CreatePrimitive(app.context, {
+				const bar = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 					definition: {
 						shape: MRE.PrimitiveShape.Box,
 						dimensions: {x: 0.1, y: 1, z: 0.001}
@@ -2794,6 +2225,50 @@ export default class AltQuiz {
 
 			result += line;
 			return result.substring(1, result.length);
+		}
+	}
+
+	public async getCategories() {
+		const cats = await query('SELECT DISTINCT categoryid, category FROM questionsTest ORDER BY categoryid');
+		const counts = await query('SELECT categoryid, category, difficulty, count(*) FROM questionsTest GROUP by categoryid, category, difficulty ORDER BY count DESC');
+		console.log(cats.rows, cats.rowCount, counts.rows);
+		this.categories.easy = [];
+		this.categories.medium = [];
+		this.categories.hard = [];
+		for (const cat of cats.rows) {
+			this.categoryRef[cat.categoryid] = cat.category;
+		}
+		for (const cat of counts.rows) {
+			if (Number(cat.count) > 9) {
+				if (cat.difficulty === 'easy') {
+					this.categories.easy.push({id: cat.categoryid, name: cat.category});
+				} else if (cat.difficulty === 'medium') {
+					this.categories.medium.push({id: cat.categoryid, name: cat.category});
+				} else if (cat.difficulty === 'hard') {
+					this.categories.hard.push({id: cat.categoryid, name: cat.category});
+				}
+			}
+		}
+		this.removeCategory(10);
+		console.log(this.categories);
+		console.log(this.categoryRef);
+	}
+
+	public removeCategory(catId: number) {
+		for (const cat of this.categories.easy) {
+			if (cat.id === catId) {
+				this.categories.easy.splice(this.categories.easy.indexOf(cat), 1);
+			}
+		}
+		for (const cat of this.categories.medium) {
+			if (cat.id === catId) {
+				this.categories.medium.splice(this.categories.medium.indexOf(cat), 1);
+			}
+		}
+		for (const cat of this.categories.hard) {
+			if (cat.id === catId) {
+				this.categories.hard.splice(this.categories.hard.indexOf(cat), 1);
+			}
 		}
 	}
 }
