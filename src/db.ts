@@ -222,18 +222,12 @@ async function checkConnection() {
 	console.log(process.env.database_url);
 	try {
 		console.log('Connecting to DB over SSL');
-		client = new Client({
-			connectionString: process.env.database_url,
-			ssl: true
-		});
+		client = new Client({ ssl: true });
 		await client.connect();
 	} catch (e) {
 		console.log(e);
 		console.log('Failed to connect to DB over SSL; Retrying unencrypted!');
-		client = new Client({
-			connectionString: process.env.database_url,
-			ssl: false
-		});
+		client = new Client({ ssl: false });
 		try {
 			await client.connect();
 		} catch {
