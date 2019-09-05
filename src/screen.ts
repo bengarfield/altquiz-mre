@@ -16,6 +16,8 @@ export default class Screen {
 		this.assets = new MRE.AssetContainer(this.app.context);
 		this.actor = MRE.Actor.CreateFromPrefab(this.app.context, {
 			prefabId: this.app.sharedAssets.screen.id,
+		/*this.actor = MRE.Actor.CreateFromGltf(this.assets, {
+			uri: this.app.baseUrl + '/screen.glb',*/
 			actor: {
 				name: 'screen',
 				parentId: root.id,

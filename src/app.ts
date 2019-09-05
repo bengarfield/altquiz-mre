@@ -84,6 +84,8 @@ export default class AltQuiz {
 
 		await this.sharedAssets.load(this.context, this.baseUrl);
 
+		const answerButtonModel = new MRE.AssetContainer(app.context);
+		await answerButtonModel.loadGltf(app.baseUrl + '/answerButton.glb', 'mesh');
 		const answerButtonModel2 = new MRE.AssetContainer(app.context);
 		await answerButtonModel2.loadGltf(app.baseUrl + '/answerButton2.glb');
 

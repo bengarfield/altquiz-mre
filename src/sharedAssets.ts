@@ -27,9 +27,11 @@ export default class SharedAssets {
 
 	public load(context: MRE.Context, baseUrl: string): Promise<void> {
 		const promises: Array<Promise<void>> = [];
+		let r: Resource;
+		let p: Promise<void>;
 
 		// load logo
-		let r = { container: new MRE.AssetContainer(context) } as Resource;
+		r = { container: new MRE.AssetContainer(context) } as Resource;
 		this.resources.logo = r;
 		r.mainAsset = r.container.createMaterial('logo', {
 			mainTextureId: r.container.createTexture('logo', {
@@ -41,7 +43,7 @@ export default class SharedAssets {
 		// load answer button
 		r = { container: new MRE.AssetContainer(context) } as Resource;
 		this.resources.answerButton = r;
-		let p = r.container.loadGltf(baseUrl + '/answerButton.glb', 'mesh')
+		p = r.container.loadGltf(baseUrl + '/answerButton.glb', 'mesh')
 			.then(assets => {
 				this.resources.answerButton.mainAsset = assets.find(a => !!a.prefab);
 			});
