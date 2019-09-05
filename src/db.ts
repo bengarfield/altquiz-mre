@@ -52,6 +52,7 @@ const categories: Category[] = [
 	{id: 30, name: 'Science: Gadgets'},
 	{id: 31, name: 'Entertainment: Japanese Anime & Manga'},
 	{id: 32, name: 'Entertainment: Cartoon & Animations'}];
+
 let client: Client;
 let questionCount = 0;
 const tempQuestons: Question[] = [];
@@ -226,7 +227,8 @@ async function checkConnection() {
 			ssl: true
 		});
 		await client.connect();
-	} catch {
+	} catch (e) {
+		console.log(e);
 		console.log('Failed to connect to DB over SSL; Retrying unencrypted!');
 		client = new Client({
 			connectionString: process.env.database_url,
@@ -235,9 +237,10 @@ async function checkConnection() {
 		try {
 			await client.connect();
 		} catch {
+			console.error(e);
 			console.error('Could not connect to database!');
 			connected = false;
-			return;
+			throw new Error('Could not connect to database!');
 		}
 	}
 	console.log('Connected');
