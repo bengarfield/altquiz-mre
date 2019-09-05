@@ -165,6 +165,7 @@ export default class Menu {
 
 		menuButton2.setBehavior(MRE.ButtonBehavior).onClick(user => {
 			if (this.app.playerManager.isMod(user)) {
+				this.app.screen.unload();
 				this.unload();
 				this.onStartClassic();
 			}

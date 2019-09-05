@@ -169,7 +169,7 @@ export default class AltQuiz {
 			mainScreen = createScreen(app.scene, {
 				position: {y: 2, z: -0.04},
 				scale: MRE.Vector3.One().scale(0.0001)
-			}, undefined, true);
+			});
 			const letters = ['A', 'B', 'C', 'D'];
 			for (let i = 0; i < 4; i ++) {
 				mainScreen.findChildrenByName(`answer${i}Button`, true)[0].setBehavior(MRE.ButtonBehavior).onButton("pressed", (user: MRE.User) => {
@@ -232,9 +232,9 @@ export default class AltQuiz {
 				timeLeft = count;
 				const timer = setInterval(() => {
 					if (next === 'reveal') {
-						screenModel.materials[1].mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
+						app.screen.setBorderProgress((count - timeLeft) / count);
 					} else {
-						screenModel.materials[1].mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
+						app.screen.setBorderProgress((count - timeLeft) / count + 1);
 					}
 					timeText.text.contents = timeLeft.toString().substr(0, 3);
 					timeLeft -= 0.05;
@@ -245,27 +245,15 @@ export default class AltQuiz {
 							roundBeginText1.text.contents = '';
 							roundBeginText2.text.contents = '';
 							roundBeginText3.text.contents = '';
-							// mainScreen = createScreen(app.scene, {
-							//     position: {y: 2, z: -0.04}
-							// }, undefined, true);
-							// const letters = ['A', 'B', 'C', 'D'];
-							// for (let i = 0; i < 4; i ++) {
-							//     mainScreen.findChildrenByName(`answer${i}Button`, true)[0].setBehavior(MRE.ButtonBehavior).onButton("pressed", (user: MRE.User) => {
-							//         for (const p of app.playerList) {
-							//             if (p.id === user.id) {
-							//                 if (!p.answered) {
-							//                     p.answered = true;
-							//                     p.answer = i;
-							//                     p.timeToAnswer = timeLeft;
-							//                     p.icon.appearance.material = colors.yellow;
-							//                     user.groups.clear();
-							//                     user.groups.add(`answered${letters[i]}`);
-							//                 }
-							//             }
-							//         }
-							//     });
-							// }
-							mainScreen.findChildrenByName('question', true)[0].text.contents = wrapText(loadedQuestions.rows[0].question, 30);
+							const questionText = wrapText(loadedQuestions.rows[0].question, 30);
+							let textHeight = 0.2;
+							if (questionText.lines > 3) {
+								for (let i = 0; i < questionText.lines - 3; i++) {
+									textHeight -= 0.025;
+								}
+							}
+							mainScreen.findChildrenByName('question', true)[0].text.contents = questionText.text;
+							mainScreen.findChildrenByName('question', true)[0].text.height = textHeight;
 							mainScreen.transform.local.scale.setAll(1);
 							time(0, 'next');
 						} else if (next === 'reveal') {
@@ -364,35 +352,37 @@ export default class AltQuiz {
 										}
 									}
 								});
+								let endClicked = false;
 								endButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
 									if (app.playerManager.isMod(user)) {
-										for (const p of app.playerList) {
-											p.icon.findChildrenByName('scoreBar', true)[0].destroy();
-											p.icon.findChildrenByName('scoreText', true)[0].destroy();
-										}
-										let winner = app.playerList[0];
-										for (const p of app.playerList) {
-											if (p.score > winner.score) {
-												winner = p;
+										if (!endClicked) {
+											for (const p of app.playerList) {
+												p.icon.findChildrenByName('scoreBar', true)[0].destroy();
+												p.icon.findChildrenByName('scoreText', true)[0].destroy();
 											}
-										}
-										console.log(`Winner: ${winner.name}`);
-										roundBeginText2.text.height = 0.3;
-										roundBeginText2.text.contents = `Winner: ${winner.name}`;
-										giveCrown(winner.id);
-										if (app.categories.hard.length > 0) {
-											nextButton.destroy();
-										}
-										endButton.children[0].text.contents = 'Back to Menu';
-										endButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user2: MRE.User) => {
-											if (app.playerManager.isMod(user2)) {
-												app.playerManager.playerList = [];
-												app.scene.destroy();
-												app.scene = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'scene'}});
-												soundPlayer = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'sound', parentId: app.scene.id}});
-												const menu = new Menu(app, () => startClassic(), () => startNew());
+											let winner = app.playerList[0];
+											for (const p of app.playerList) {
+												if (p.score > winner.score) {
+													winner = p;
+												}
 											}
-										});
+											console.log(`Winner: ${winner.name}`);
+											roundBeginText2.text.height = 0.3;
+											roundBeginText2.text.contents = `Winner: ${winner.name}`;
+											giveCrown(winner.id);
+											if (app.categories.hard.length > 0) {
+												nextButton.destroy();
+											}
+											endButton.children[0].text.contents = 'Back to Menu';
+											endClicked = true;
+										} else {
+											app.playerManager.playerList = [];
+											app.scene.destroy();
+											app.scene = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'scene'}});
+											soundPlayer = MRE.Actor.CreateEmpty(app.context, {actor: {name: 'sound', parentId: app.scene.id}});
+											app.screen = new Screen(app, app.scene);
+											const menu = new Menu(app, () => startClassic(), () => startNew());
+										}
 									}
 								});
 							}, 3000);
@@ -452,11 +442,10 @@ export default class AltQuiz {
 			for (let i = 0; i < 5; i++) {
 				createPodium(i, {position: {x: 1.6 - (i * 0.8), y: 0.19}}).catch();
 			}
-
 			mainScreen = createScreen(app.scene, {
 				position: extrasEnabled ? {x: -2.3, y: 3.5, z: 1.81} : {y: 4.5, z: 1.44},
 				scale: extrasEnabled ? {x: 1, y: 1, z: 1} : {x: 2.2, y: 2.2, z: 2.2}
-			}, undefined, true);
+			});
 			await createHostPodium();
 			hostScreen = hostPodium.findChildrenByName('main', true)[0];
 			for (let i = 0; i < 4; i ++) {
@@ -541,11 +530,11 @@ export default class AltQuiz {
 					pod.leaveButton.destroy();
 				}
 				pod.id = null;
-				pod.screen.destroy();
 				pod.name.text.contents = '';
 				pod.score.text.contents = '';
 				pod.scoreVal = 0;
 				pod.joinButton.transform.local.position.y = 2;
+				resetScreen(pod.screen);
 				updateScores();
 			}
 		}
@@ -646,7 +635,8 @@ export default class AltQuiz {
 		}
 
 		async function createPodium(num: number, transform: Partial<MRE.TransformLike>) {
-			const pod = MRE.Actor.CreateEmpty(app.context, {
+			const pod = app.podiumList[num];
+			const root = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
 					name: `podium ${num + 1}`,
 					parentId: podiums.id,
@@ -655,31 +645,30 @@ export default class AltQuiz {
 					}
 				}
 			});
-			// if (!extrasEnabled) {
-			app.podiumList[num].model = MRE.Actor.CreateFromPrefab(app.context, {
+			pod.model = MRE.Actor.CreateFromPrefab(app.context, {
 				prefabId: podiumModel.prefabs[0].id,
 				actor: {
-					parentId: pod.id,
+					parentId: root.id,
 					transform: {local: {
 						position: {y: 0.1}
 					}}
 				}
 			});
-			await app.podiumList[num].model.created();
-			app.podiumList[num].model.findChildrenByName('base', true)[0].children[0].appearance.material = podiumColors[num];
+			await pod.model.created();
+			pod.model.findChildrenByName('base', true)[0].appearance.material = podiumColors[num];
 			setStripes(num, 'black');
-			// }
-			app.podiumList[num].joinButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
+			pod.joinButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
-					shape: MRE.PrimitiveShape.Sphere
+					shape: MRE.PrimitiveShape.Sphere,
+					dimensions: {x: 0.5, y: 0.5, z: 0.5}
 				},
 				addCollider: true,
 				actor: {
-					parentId: pod.id,
+					parentId: root.id,
+					name: 'joinButton',
 					transform: {
 						local: {
-							position: {x: 0, y: 2, z: 0},
-							scale: {x: 0.5, y: 0.5, z: 0.5}
+							position: {x: 0, y: 2, z: 0}
 						}
 					},
 					appearance: {
@@ -688,25 +677,26 @@ export default class AltQuiz {
 					}
 				}
 			});
-			app.podiumList[num].joinButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
+			pod.joinButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
 				if (!checkIfJoined(app.podiumList, user.id)) {
-					app.podiumList[num].joinButton.transform.local.position.y = -1;
-					app.podiumList[num].id = user.id;
-					app.podiumList[num].name.text.contents = user.name.length < 10 ? user.name : user.name.substr(0, 10) + '...';
-					app.podiumList[num].score.text.contents = '0';
+					pod.joinButton.transform.local.position.y = -1;
+					pod.id = user.id;
+					pod.name.text.contents = user.name.length < 10 ? user.name : user.name.substr(0, 10) + '...';
+					pod.score.text.contents = '0';
 					user.groups.delete('notJoined');
-					app.podiumList[num].leaveButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
+					pod.leaveButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 						definition: {
-							shape: MRE.PrimitiveShape.Sphere
+							shape: MRE.PrimitiveShape.Sphere,
+							dimensions: {x: 0.05, y: 0.05, z: 0.05}
 						},
 						addCollider: true,
 						actor: {
 							exclusiveToUser: user.id,
-							parentId: pod.id,
+							parentId: root.id,
+							name: 'leaveButton',
 							transform: {
 								local: {
-									position: {x: 0, y: 1, z: 0.235},
-									scale: {x: 0.05, y: 0.05, z: 0.05}
+									position: {x: 0, y: 1, z: 0.235}
 								}
 							},
 							appearance: {
@@ -714,61 +704,58 @@ export default class AltQuiz {
 							}
 						}
 					});
-					app.podiumList[num].leaveButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', () => {
-						leaveGame(app.podiumList[num]);
+					pod.leaveButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', () => {
+						leaveGame(pod);
 					});
-					const screen = createScreen(app.scene, {
-						position: {x: 1, y: 1.55, z: -3.6},
-						rotation: MRE.Quaternion.FromEulerAngles(10 * MRE.DegreesToRadians, 135 * MRE.DegreesToRadians, 0)
-					}, user.id, false);
-
-					MRE.Actor.CreateFromPrefab(app.context, {
-						prefabId: screenModel.prefabs[0].id,
-						actor: {
-							parentId: screen.id,
-							name: 'screenModel',
-							transform: {local: {
-								position: {z: 0.023},
-								scale: {x: 0.45, y: 0.45, z: 0.45},
-								rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Up(), 180 * MRE.DegreesToRadians)
-							}}
-						}
-					});
-
+					loadScreen(pod.screen);
 					updateScores();
-					let confirmButton: MRE.Actor = null;
-					// let buttonCreated = app.podiumList[num].screen.findChildrenByName('confirm', true).length;
-					for (let x = 0; x < 4; x ++) {
-						screen.findChildrenByName(`answer${x}Button`, true)[0].setBehavior(MRE.ButtonBehavior).onButton("pressed", (user2: MRE.User) => {
-							if (app.podiumPressed !== -1) {
-								if (user2.id === app.podiumList[app.podiumPressed].id && !questionAnswered && app.answerLocked === 0) {
-									selectedAnswer = selectAnswer(x, false, false);
-									if (selectedAnswer > -1 && app.podiumList[num].screen.findChildrenByName('confirm', true).length === 0) {
-										console.log('Create button');
-										confirmButton = createConfirmButton(screen);
-
-										confirmButton.setBehavior(MRE.ButtonBehavior).onButton("pressed", (user3: MRE.User) => {
-											selectAnswer(selectedAnswer, false, true);
-											app.answerLocked = 2;
-											// buttonCreated = false;
-											confirmButton.destroy();
-										});
-										// buttonCreated = true;
-									} else if (selectedAnswer === -1) {
-										console.log('Remove button');
-										confirmButton.destroy();
-										// buttonCreated = false;
-									}
-								}
-							}
-						});
-					}
 				}
 			});
+			pod.screen = createScreen(root, {
+				position: {x: 0, y: 1.52, z: -0.25},
+				scale: {x: 0.2, y: 0.2, z: 0.2},
+				rotation: MRE.Quaternion.FromEulerAngles(20 * MRE.DegreesToRadians, 180 * MRE.DegreesToRadians, 0)
+			});
+
+			MRE.Actor.CreateFromPrefab(app.context, {
+				prefabId: screenModel.prefabs[0].id,
+				actor: {
+					parentId: pod.screen.id,
+					name: 'screenModel',
+					transform: {local: {
+						position: {z: 0.023},
+						scale: {x: 0.45, y: 0.45, z: 0.45},
+						rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Up(), 180 * MRE.DegreesToRadians)
+					}}
+				}
+			});
+
+			let confirmButton: MRE.Actor = null;
+			for (let x = 0; x < 4; x ++) {
+				pod.screen.findChildrenByName(`answer${x}Button`, true)[0].setBehavior(MRE.ButtonBehavior).onButton("pressed", user => {
+					if (app.podiumPressed !== -1) {
+						if (user.id === app.podiumList[app.podiumPressed].id && !questionAnswered && app.answerLocked === 0) {
+							selectedAnswer = selectAnswer(x, false, false);
+							if (selectedAnswer > -1 && pod.screen.findChildrenByName('confirm', true).length === 0) {
+								confirmButton = createConfirmButton(pod.screen, user);
+
+								confirmButton.setBehavior(MRE.ButtonBehavior).onButton("pressed", (user3: MRE.User) => {
+									selectAnswer(selectedAnswer, false, true);
+									app.answerLocked = 2;
+									confirmButton.destroy();
+								});
+							} else if (selectedAnswer === -1) {
+								confirmButton.destroy();
+							}
+						}
+					}
+				});
+			}
+
 			const score = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
 					name: 'score',
-					parentId: pod.id,
+					parentId: root.id,
 					transform: {
 						local: {
 							position: {x: 0, y: 1, z: -0.24},
@@ -783,11 +770,11 @@ export default class AltQuiz {
 					}
 				}
 			});
-			app.podiumList[num].score = score;
+			pod.score = score;
 			const name = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
 					name: 'name',
-					parentId: pod.id,
+					parentId: root.id,
 					transform: {
 						local: {
 							position: {x: 0, y: 1.225, z: -0.27},
@@ -802,11 +789,11 @@ export default class AltQuiz {
 					}
 				}
 			});
-			app.podiumList[num].name = name;
+			pod.name = name;
 			const buttonModel = MRE.Actor.CreateFromPrefab(app.context, {
 				prefabId: podiumButtonModel.prefabs[0].id,
 				actor: {
-					parentId: pod.id,
+					parentId: root.id,
 					transform: {
 						local: {
 							position: {x: 0, y: .1, z: 0},
@@ -818,7 +805,7 @@ export default class AltQuiz {
 			});
 			await buttonModel.created();
 			assignMat(buttonModel, colors.darkRed);
-			app.podiumList[num].button = buttonModel;
+			pod.button = buttonModel;
 			const buttonBackup = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
@@ -826,7 +813,7 @@ export default class AltQuiz {
 				},
 				addCollider: true,
 				actor: {
-					parentId: pod.id,
+					parentId: root.id,
 					transform: {
 						local: {
 							position: {x: 0, y: 1.245, z: -.045},
@@ -837,40 +824,40 @@ export default class AltQuiz {
 			});
 			const podButton = buttonModel.setBehavior(MRE.ButtonBehavior);
 			podButton.onButton('pressed', (user: MRE.User) => {
-				if (app.podiumPressed === -1 && app.podiumList[num].id === user.id && !app.podiumList[num].hasBuzzed && app.mode === 'question') {
+				if (app.podiumPressed === -1 && pod.id === user.id && !pod.hasBuzzed && app.mode === 'question') {
 					buzz(user);
 				}
 			});
 			const podButton2 = buttonBackup.setBehavior(MRE.ButtonBehavior);
 			podButton2.onButton('pressed', (user: MRE.User) => {
-				if (app.podiumPressed === -1 && app.podiumList[num].id === user.id && !app.podiumList[num].hasBuzzed && app.mode === 'question') {
+				if (app.podiumPressed === -1 && pod.id === user.id && !pod.hasBuzzed && app.mode === 'question') {
 					buzz(user);
 				}
 			});
 			function buzz(user: MRE.User) {
 				console.log(`Button ${num} pressed.`);
 				app.podiumPressed = num;
-				app.podiumList[num].hasBuzzed = true;
+				pod.hasBuzzed = true;
 				for (let x = 0; x < 5; x++) {
 					if (app.podiumList[x].id === user.id) {
 						assignMat(app.podiumList[x].button, colors.green);
-						app.podiumList[x].model.findChildrenByName('panels', true)[0].children[0].appearance.material = colors.white;
+						app.podiumList[x].model.findChildrenByName('panels', true)[0].appearance.material = colors.white;
 						screenModel.materials[1].color = podiumColors[x].color;
 					} else {
 						assignMat(app.podiumList[x].button, colors.darkRed);
-						app.podiumList[x].model.findChildrenByName('panels', true)[0].children[0].appearance.material = colors.grey;
+						app.podiumList[x].model.findChildrenByName('panels', true)[0].appearance.material = colors.grey;
 					}
 				}
 				playSound('buzz');
 				moveCamera(num, app.camera);
-				app.podiumList[num].spotLight.light.color = new MRE.Color3(.3, .3, .3);
-				app.podiumList[num].spotLight.light.enabled = true;
+				pod.spotLight.light.color = new MRE.Color3(.3, .3, .3);
+				pod.spotLight.light.enabled = true;
 				setStripes(num, 'white');
 			}
 
-			app.podiumList[num].spotLight = MRE.Actor.CreateEmpty(app.context, {
+			pod.spotLight = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
-					parentId: pod.id,
+					parentId: root.id,
 					name: 'spotLight',
 					light: {
 						type: 'spot',
@@ -936,7 +923,7 @@ export default class AltQuiz {
 			createScreen(screen2, {
 				position: {z: -0.001},
 				scale: {x: 0.2, y: 0.2, z: 0.2}
-			}, undefined, false);
+			});
 
 			const screen1Cont = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
@@ -1029,7 +1016,7 @@ export default class AltQuiz {
 					}
 				}
 			});
-			const hostJoinShere = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
+			const hostJoinSphere = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Sphere,
 					dimensions: { x: 0.25, y: 0.25, z: 0.25 }
@@ -1047,9 +1034,9 @@ export default class AltQuiz {
 					}
 				}
 			});
-			hostJoinShere.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
+			hostJoinSphere.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
 				if (app.currentHost === null) {
-					hostJoinShere.transform.local.scale.setAll(0);
+					hostJoinSphere.transform.local.scale.setAll(0);
 					app.currentHost = user;
 					hostText.text.contents = `Host: ${app.currentHost.name}`;
 					hostPodium.findChildrenByName('hostJoinButton', true)[0].appearance.materialId = colors.red.id;
@@ -1076,13 +1063,13 @@ export default class AltQuiz {
 				}
 			}).setBehavior(MRE.ButtonBehavior).onButton('pressed', async (user: MRE.User) => {
 				if (app.currentHost === null) {
-					hostJoinShere.transform.local.scale.setAll(0);
+					hostJoinSphere.transform.local.scale.setAll(0);
 					app.currentHost = user;
 					hostText.text.contents = `Host: ${app.currentHost.name}`;
 					hostPodium.findChildrenByName('hostJoinButton', true)[0].appearance.materialId = colors.red.id;
 				} else if (app.currentHost.id === user.id || app.playerManager.isMod(user)) {
 					clearHost();
-					hostJoinShere.transform.local.scale.setAll(1);
+					hostJoinSphere.transform.local.scale.setAll(1);
 					if (!leftHidden) slideHostPanel('left', 0);
 					if (!rightHidden) slideHostPanel('right', 0);
 					leftHidden = true;
@@ -1606,7 +1593,7 @@ export default class AltQuiz {
 									app.podiumList[i].hasBuzzed = false;
 									app.podiumList[i].spotLight.light.enabled = false;
 									setStripes(i, 'black');
-									app.podiumList[i].model.findChildrenByName('panels', true)[0].children[0].appearance.material = colors.white;
+									app.podiumList[i].model.findChildrenByName('panels', true)[0].appearance.material = colors.white;
 								}
 							}
 						}
@@ -1640,13 +1627,12 @@ export default class AltQuiz {
 			} else if (color === 'red') {
 				c = colors.red;
 			}
-			app.podiumList[pod].model.findChildrenByName('stripes', true)[0].children[0].appearance.material = c;
+			app.podiumList[pod].model.findChildrenByName('stripes', true)[0].appearance.material = c;
 		}
 
-		function createScreen(parent: MRE.Actor, transform: Partial<MRE.ScaledTransformLike>, user: string, first: boolean): MRE.Actor {
+		function createScreen(parent: MRE.Actor, transform: Partial<MRE.ScaledTransformLike>): MRE.Actor {
 			const cont = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
-					exclusiveToUser: user,
 					parentId: parent.id,
 					name: 'screenContainer',
 					transform: {
@@ -1685,11 +1671,6 @@ export default class AltQuiz {
 					}
 				}
 			});
-			for (const pod of app.podiumList) {
-				if (pod.id === user) {
-					pod.screen = cont;
-				}
-			}
 
 			const scores = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
@@ -1710,7 +1691,7 @@ export default class AltQuiz {
 					parentId: screen.id,
 					transform: {
 							local: {
-							position: {x: 0, y: 0.4, z: 0}
+							position: {x: 0, y: 0.45, z: 0}
 						}
 					},
 					text: {
@@ -1798,21 +1779,28 @@ export default class AltQuiz {
 				}
 			}
 
-			// console.log(screen);
-			// screen.value.findChildrenByName('question', false)[0].text.contents = 'Hello';
-			if (!first) {
-				if (app.gamemode === 'classic') {
-					cont.findChildrenByName('logo', true)[0].transform.local = mainScreen.findChildrenByName('logo', true)[0].transform.local;
-				}
-				scores.transform.local = mainScreen.findChildrenByName('scoreText', true)[0].transform.local;
-				screen.transform.local = mainScreen.findChildrenByName('screen', true)[0].transform.local;
-				screen.findChildrenByName('question', true)[0].text.contents = mainScreen.findChildrenByName('question', true)[0].text.contents;
-				for (let i = 0; i < 4; i++) {
-					screen.findChildrenByName(`answer${i}Text`, true)[0].text.contents = mainScreen.findChildrenByName(`answer${i}Text`, true)[0].text.contents;
-					screen.findChildrenByName(`answer${i}Text`, true)[0].text.height = mainScreen.findChildrenByName(`answer${i}Text`, true)[0].text.height;
-				}
-			}
 			return cont;
+		}
+
+		function loadScreen(screen: MRE.Actor) {
+			if (app.gamemode === 'classic') {
+				screen.findChildrenByName('logo', false)[0].transform.local = mainScreen.findChildrenByName('logo', false)[0].transform.local;
+			}
+			screen.findChildrenByName('scoreText', false)[0].transform.local = mainScreen.findChildrenByName('scoreText', false)[0].transform.local;
+			screen.findChildrenByName('screen', false)[0].transform.local = mainScreen.findChildrenByName('screen', true)[0].transform.local;
+			screen.findChildrenByName('question', true)[0].text.contents = mainScreen.findChildrenByName('question', true)[0].text.contents;
+			screen.findChildrenByName('question', true)[0].text.height = mainScreen.findChildrenByName('question', true)[0].text.height;
+			for (let i = 0; i < 4; i++) {
+				screen.findChildrenByName(`answer${i}Text`, true)[0].text.contents = mainScreen.findChildrenByName(`answer${i}Text`, true)[0].text.contents;
+				screen.findChildrenByName(`answer${i}Text`, true)[0].text.height = mainScreen.findChildrenByName(`answer${i}Text`, true)[0].text.height;
+			}
+		}
+
+		function resetScreen(screen: MRE.Actor) {
+			screen.findChildrenByName('logo', true)[0].transform.local.position.z = 0;
+			screen.findChildrenByName('screen', true)[0].transform.local.position.z = 0.02;
+			screen.findChildrenByName('screen', true)[0].transform.local.scale.setAll(0.0001);
+			screen.findChildrenByName('scoreText', false)[0].text.contents = '';
 		}
 
 		function categorySelect(categories: any) {
@@ -1821,11 +1809,14 @@ export default class AltQuiz {
 			console.log(categories[0], categories[1], categories[2], categories[3]);
 			for (const pod of app.podiumList) {
 				if (pod.id !== null) {
-					pod.screen.findChildrenByName('question', true)[0].text.contents = wrapText('Select category', 30);
+					pod.screen.findChildrenByName('question', true)[0].text.contents = 'Select category';
+					pod.screen.findChildrenByName('question', true)[0].text.height = 0.2;
 				}
 			}
-			hostScreen.findChildrenByName('question', true)[0].text.contents = wrapText('Select category', 30);
-			mainScreen.findChildrenByName('question', true)[0].text.contents = wrapText('Select category', 30);
+			hostScreen.findChildrenByName('question', true)[0].text.contents = 'Select category';
+			hostScreen.findChildrenByName('question', true)[0].text.height = 0.2;
+			mainScreen.findChildrenByName('question', true)[0].text.contents = 'Select category';
+			mainScreen.findChildrenByName('question', true)[0].text.height = 0.2;
 			for (let i = 0; i < 4; i++) {
 				for (const pod of app.podiumList) {
 					if (pod.id !== null) {
@@ -1881,15 +1872,25 @@ export default class AltQuiz {
 				}
 			}
 
+			const questionText = wrapText(question.question, 30);
+			let textHeight = 0.2;
+			if (questionText.lines > 3) {
+				for (let i = 0; i < questionText.lines - 3; i++) {
+					textHeight -= 0.025;
+				}
+			}
 			for (const pod of app.podiumList) {
 				if (pod.id !== null) {
-					pod.screen.findChildrenByName('question', true)[0].text.contents = wrapText(question.question, 30);
+					pod.screen.findChildrenByName('question', true)[0].text.contents = questionText.text;
+					pod.screen.findChildrenByName('question', true)[0].text.height = textHeight;
 				}
 			}
 			if (app.gamemode === 'classic') {
-				hostScreen.findChildrenByName('question', true)[0].text.contents = wrapText(question.question, 30);
+				hostScreen.findChildrenByName('question', true)[0].text.contents = questionText.text;
+				hostScreen.findChildrenByName('question', true)[0].text.height = textHeight;
 			}
-			mainScreen.findChildrenByName('question', true)[0].text.contents = wrapText(question.question, 30);
+			mainScreen.findChildrenByName('question', true)[0].text.contents = questionText.text;
+			mainScreen.findChildrenByName('question', true)[0].text.height = textHeight;
 
 			const answers = [question.answer, question.incorrect1, question.incorrect2, question.incorrect3];
 			shuffleArray(answers);
@@ -1980,7 +1981,7 @@ export default class AltQuiz {
 			return win;
 		}
 
-		function createConfirmButton(screen: MRE.Actor): MRE.Actor {
+		function createConfirmButton(screen: MRE.Actor, user: MRE.User): MRE.Actor {
 			const button = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 				definition: {
 					shape: MRE.PrimitiveShape.Box,
@@ -1990,6 +1991,7 @@ export default class AltQuiz {
 				actor: {
 					name: 'confirm',
 					parentId: screen.id,
+					exclusiveToUser: user.id,
 					appearance: {
 						materialId: colors.green.id
 					},
@@ -2051,6 +2053,8 @@ export default class AltQuiz {
 		}
 		function showScores() {
 			if (app.gamemode === 'classic') {
+				mainScreen.findChildrenByName('screen', true)[0].transform.local.position.z = 0.02;
+				mainScreen.findChildrenByName('screen', true)[0].transform.local.scale.setAll(0.0001);
 				hostPodium.findChildrenByName('screen', true)[0].transform.local.position.z = 0.02;
 				hostPodium.findChildrenByName('screen', true)[0].transform.local.scale.setAll(0.0001);
 				for (const pod of app.podiumList) {
@@ -2208,23 +2212,38 @@ export default class AltQuiz {
 			}
 			actor.text.height = height;
 		}
-		function wrapText(input: string, lineLength: number) {
+		function wrapText(input: string, lineLength: number): {text: string, lines: number} {
 			const words: string[] = input.split(' ');
 			let result = '';
 			let line = '';
+			let lines = 1;
 
 			for (const s of words) {
 				const temp = line + ' ' + s;
 				if (temp.length > lineLength) {
-					result += line + "\n";
-					line = s;
+					result += line + '\n';
+					if (s.length > lineLength) {
+						const parts = Math.ceil(s.length / lineLength);
+						for (let i = 0; i < parts; i++) {
+							const part = s.substring(i * lineLength, (i + 1) * lineLength > s.length ? s.length : (i + 1) * lineLength);
+							if (part.length < lineLength) {
+								line = part;
+							} else {
+								result += part + '-\n';
+							}
+							lines++;
+						}
+					} else {
+						line = s;
+						lines++;
+					}
 				} else {
 					line = temp;
 				}
 			}
 
 			result += line;
-			return result.substring(1, result.length);
+			return {text: result.substring(1, result.length), lines: lines};
 		}
 	}
 
