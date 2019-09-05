@@ -7,6 +7,8 @@ import {Client, QueryResult} from 'pg';
 import pgescape from 'pg-escape';
 import request = require('request');
 
+import AltQuiz from './app';
+
 interface Category {
 	id: number;
 	name: string;
@@ -50,14 +52,11 @@ const categories: Category[] = [
 	{id: 30, name: 'Science: Gadgets'},
 	{id: 31, name: 'Entertainment: Japanese Anime & Manga'},
 	{id: 32, name: 'Entertainment: Cartoon & Animations'}];
-let client = new Client({
-	connectionString: process.env.database_url,
-	ssl: true
-});
+let client: Client;
 let questionCount = 0;
 const tempQuestons: Question[] = [];
 let updating = false;
-export async function questionManager(app: any) {
+export async function questionManager(app: AltQuiz) {
 	// const {Client} = require('pg');
 	// console.log(pgescape('INSERT INTO %I VALUES(%L)', 'testing', "What breed of dog was 'Marley' in the film 'Marley & Me'?"));
 	await checkConnection();
@@ -88,7 +87,7 @@ export async function questionManager(app: any) {
 			}
 		}
 	});
-	const updateButton = MRE.Actor.CreatePrimitive(app.context, {
+	const updateButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
 		definition: {
 			shape: MRE.PrimitiveShape.Box,
 			dimensions: {x: 0.1, y: 0.1, z: 0.1}
@@ -219,8 +218,13 @@ export async function questionManager(app: any) {
 let connected = false;
 async function checkConnection() {
 	if (connected) return;
+	console.log(process.env.database_url);
 	try {
 		console.log('Connecting to DB over SSL');
+		client = new Client({
+			connectionString: process.env.database_url,
+			ssl: true
+		});
 		await client.connect();
 	} catch {
 		console.log('Failed to connect to DB over SSL; Retrying unencrypted!');
