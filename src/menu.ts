@@ -10,6 +10,7 @@ import Screen from './screen';
 
 export default class Menu {
 	private assets: MRE.AssetContainer;
+	private screen: Screen;
 	private root: MRE.Actor;
 	private playerIconRoot: MRE.Actor;
 
@@ -21,15 +22,13 @@ export default class Menu {
 		private onStartClassic: () => void,
 		private onStartParty: () => void
 	) {
-		if (!this.app.screen) {
-			this.app.screen = new Screen(this.app, this.app.scene);
-		}
+		this.screen = new Screen(this.app, this.app.scene);
 		this.assets = new MRE.AssetContainer(this.app.context);
 
-		this.app.screen.setBorderProgress(0);
-		this.app.screen.setBorderColor(this.app.colors.white.color);
-		this.app.screen.actor.transform.local.position.set(0, 2, 0.025);
-		this.app.screen.actor.transform.local.scale.setAll(0.5);
+		this.screen.setBorderProgress(0);
+		this.screen.setBorderColor(this.app.colors.white.color);
+		this.screen.actor.transform.local.position.set(0, 2, 0.025);
+		this.screen.actor.transform.local.scale.setAll(0.5);
 
 		this.root = MRE.Actor.CreatePrimitive(this.assets, {
 			definition: {
@@ -61,7 +60,7 @@ export default class Menu {
 					}
 				},
 				appearance: {
-					materialId: this.app.sharedAssets.logoMat.id
+					materialId: this.app.sharedAssets.logo.id
 				}
 			}
 		});

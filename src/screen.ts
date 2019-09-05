@@ -14,8 +14,8 @@ export default class Screen {
 
 	public constructor(private app: AltQuiz, root: MRE.Actor) {
 		this.assets = new MRE.AssetContainer(this.app.context);
-		this.actor = MRE.Actor.CreateFromGltf(this.assets, {
-			uri: app.baseUrl + '/screen.glb',
+		this.actor = MRE.Actor.CreateFromPrefab(this.app.context, {
+			prefabId: this.app.sharedAssets.screen.id,
 			actor: {
 				name: 'screen',
 				parentId: root.id,

@@ -219,7 +219,6 @@ export async function questionManager(app: AltQuiz) {
 let connected = false;
 async function checkConnection() {
 	if (connected) return;
-	console.log(process.env.database_url);
 	try {
 		console.log('Connecting to DB over SSL');
 		client = new Client({ ssl: true });

@@ -10,7 +10,6 @@ import ColorMaterials from './colorMaterials';
 import { loadQuestions, query, questionManager } from './db';
 import Menu from './menu';
 import PlayerManager from './playerManager';
-import Screen from './screen';
 import SharedAssets from './sharedAssets';
 import { Category, Podium, Question } from './types';
 
@@ -18,7 +17,6 @@ export default class AltQuiz {
 	public colors: ColorMaterials;
 	public playerManager: PlayerManager;
 	public scene: MRE.Actor;
-	public screen: Screen;
 	public sharedAssets: SharedAssets;
 	public get playerList() { return this.playerManager.playerList; }
 
@@ -86,10 +84,6 @@ export default class AltQuiz {
 
 		await this.sharedAssets.load(this.context, this.baseUrl);
 
-		const screenModel = new MRE.AssetContainer(app.context);
-		await screenModel.loadGltf(app.baseUrl + '/screen.glb');
-		const answerButtonModel = new MRE.AssetContainer(app.context);
-		await answerButtonModel.loadGltf(app.baseUrl + '/answerButton.glb', 'mesh');
 		const answerButtonModel2 = new MRE.AssetContainer(app.context);
 		await answerButtonModel2.loadGltf(app.baseUrl + '/answerButton2.glb');
 
@@ -232,9 +226,9 @@ export default class AltQuiz {
 				timeLeft = count;
 				const timer = setInterval(() => {
 					if (next === 'reveal') {
-						screenModel.materials[1].mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
+						app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
 					} else {
-						screenModel.materials[1].mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
+						app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
 					}
 					timeText.text.contents = timeLeft.toString().substr(0, 3);
 					timeLeft -= 0.05;
@@ -412,7 +406,7 @@ export default class AltQuiz {
 			} else {
 				app.scene.transform.local.position = new MRE.Vector3(0, -0.25, 0);
 				MRE.Actor.CreateFromPrefab(app.context, {
-					prefabId: screenModel.prefabs[0].id,
+					prefabId: app.sharedAssets.screen.id,
 					actor: {
 						parentId: app.scene.id,
 						name: 'screenModel',
@@ -422,8 +416,8 @@ export default class AltQuiz {
 						}}
 					}
 				});
-				screenModel.materials[1].mainTextureOffset.set(0, 0);
-				screenModel.materials[1].color = colors.black.color;
+				app.sharedAssets.screenBorderMat.mainTextureOffset.set(0, 0);
+				app.sharedAssets.screenBorderMat.color = colors.black.color;
 			}
 			podiums = await MRE.Actor.CreateEmpty(app.context, {
 				actor: {
@@ -723,7 +717,7 @@ export default class AltQuiz {
 					}, user.id, false);
 
 					MRE.Actor.CreateFromPrefab(app.context, {
-						prefabId: screenModel.prefabs[0].id,
+						prefabId: app.sharedAssets.screen.id,
 						actor: {
 							parentId: screen.id,
 							name: 'screenModel',
@@ -855,7 +849,7 @@ export default class AltQuiz {
 					if (app.podiumList[x].id === user.id) {
 						assignMat(app.podiumList[x].button, colors.green);
 						app.podiumList[x].model.findChildrenByName('panels', true)[0].children[0].appearance.material = colors.white;
-						screenModel.materials[1].color = podiumColors[x].color;
+						app.sharedAssets.screenBorderMat.color = podiumColors[x].color;
 					} else {
 						assignMat(app.podiumList[x].button, colors.darkRed);
 						app.podiumList[x].model.findChildrenByName('panels', true)[0].children[0].appearance.material = colors.grey;
@@ -1507,7 +1501,7 @@ export default class AltQuiz {
 					app.podiumPressed = -1;
 					moveCamera(-1, app.camera);
 					selectAnswer(-1, true, false);
-					screenModel.materials[1].color = colors.black.color;
+					app.sharedAssets.screenBorderMat.color = colors.black.color;
 				}
 			});
 			const nextButton = await MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
@@ -1586,7 +1580,7 @@ export default class AltQuiz {
 						} else {
 							app.podiumPressed = -1;
 							app.answerLocked = 0;
-							screenModel.materials[1].color = colors.black.color;
+							app.sharedAssets.screenBorderMat.color = colors.black.color;
 							if (currentQuestion === 4) {
 								// Next round
 								app.currentRound++;
@@ -1667,7 +1661,7 @@ export default class AltQuiz {
 							rotation: MRE.Quaternion.RotationAxis(MRE.Vector3.Right(), -90 * MRE.DegreesToRadians)
 						}},
 						appearance: {
-							materialId: app.sharedAssets.logoMat.id
+							materialId: app.sharedAssets.logo.id
 						}
 					}
 				});
@@ -1771,7 +1765,7 @@ export default class AltQuiz {
 					}
 				});
 				const button = MRE.Actor.CreateFromPrefab(app.context, {
-					prefabId: answerButtonModel.prefabs[0].id,
+					prefabId: app.sharedAssets.answerButton.id,
 					actor: {
 						parentId: container.id,
 						name: `answer${i}Button`
