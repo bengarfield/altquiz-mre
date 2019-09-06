@@ -7,9 +7,10 @@ import { QueryResult } from 'pg';
 import pgescape from 'pg-escape';
 
 import ColorMaterials from './colorMaterials';
-import { loadQuestions, query, questionManager } from './db';
+import Database from './db';
 import Menu from './menu';
 import PlayerManager from './playerManager';
+import QuestionManager from './questionManager';
 import SharedAssets from './sharedAssets';
 import { Category, Podium, Question } from './types';
 
@@ -18,6 +19,7 @@ export default class AltQuiz {
 	public playerManager: PlayerManager;
 	public scene: MRE.Actor;
 	public sharedAssets: SharedAssets;
+	public db: Database;
 	public get playerList() { return this.playerManager.playerList; }
 
 	private gamemode: string;
@@ -43,17 +45,24 @@ export default class AltQuiz {
 		this.colors = new ColorMaterials(context);
 		this.playerManager = new PlayerManager(this);
 		this.sharedAssets = new SharedAssets();
+		this.db = new Database();
 
 		this.context.onUserJoined(user => this.playerManager.userJoined(user));
 		this.context.onUserLeft(user => this.playerManager.userLeft(user));
 		this.context.onStarted(() => this.started());
+		this.context.onStopped(() => {
+			if (this.db) {
+				this.db.disconnect().then(() => console.log('db disconnected')).catch();
+			}
+		});
 	}
 
 	private async started() {
 		const app = this;
 		// console.log(app.params);
 		if (app.params.questions !== undefined) {
-			await questionManager(app);
+			const qm = new QuestionManager(this.db);
+			await qm.questionManager(app);
 			return;
 		}
 		const colors = this.colors;
@@ -214,7 +223,7 @@ export default class AltQuiz {
 				roundBeginText3.text.contents = `${questions} Question${questions > 1 ? 's' : ''}`;
 				const sql = pgescape(`SELECT * FROM questionsTest WHERE categoryId = ${catId} AND difficulty = %L ORDER BY RANDOM() LIMIT ${questions}`, diff);
 				console.log(sql);
-				loadedQuestions = await query(sql);
+				loadedQuestions = await app.db.query(sql);
 				// app.categories.splice(0, 1);
 				app.removeCategory(catId);
 				time(5, 'start');
@@ -1543,7 +1552,7 @@ export default class AltQuiz {
 						if (selectedAnswer !== -1) {
 							// Select category and load questions
 							console.log(`Load questions for category: ${currentDifficulty().cats[selectedAnswer].name}`);
-							loadedQuestions = await query(pgescape("SELECT * FROM questionsTest WHERE category = %L AND difficulty = %L ORDER BY RANDOM() LIMIT 5", currentDifficulty().cats[selectedAnswer].name, currentDifficulty().diff));
+							loadedQuestions = await app.db.query(pgescape("SELECT * FROM questionsTest WHERE category = %L AND difficulty = %L ORDER BY RANDOM() LIMIT 5", currentDifficulty().cats[selectedAnswer].name, currentDifficulty().diff));
 							console.log(loadedQuestions);
 							app.removeCategory(currentDifficulty().cats[selectedAnswer].id);
 							// app.categories.splice(selectedAnswer, 1);
@@ -2225,8 +2234,8 @@ export default class AltQuiz {
 	}
 
 	public async getCategories() {
-		const cats = await query('SELECT DISTINCT categoryid, category FROM questionsTest ORDER BY categoryid');
-		const counts = await query('SELECT categoryid, category, difficulty, count(*) FROM questionsTest GROUP by categoryid, category, difficulty ORDER BY count DESC');
+		const cats = await this.db.query('SELECT DISTINCT categoryid, category FROM questionsTest ORDER BY categoryid');
+		const counts = await this.db.query('SELECT categoryid, category, difficulty, count(*) FROM questionsTest GROUP by categoryid, category, difficulty ORDER BY count DESC');
 		console.log(cats.rows, cats.rowCount, counts.rows);
 		this.categories.easy = [];
 		this.categories.medium = [];
