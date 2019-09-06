@@ -22,7 +22,9 @@ export default class Menu {
 		private onStartClassic: () => void,
 		private onStartParty: () => void
 	) {
-		this.screen = new Screen(this.app, this.app.scene);
+		if (!this.app.screen) {
+			this.screen = new Screen(this.app, this.app.scene);
+		}
 		this.screen.setBorderProgress(0);
 		this.screen.setBorderColor(this.app.colors.white.color);
 		this.screen.actor.transform.local.position.set(0, 2, 0.025);

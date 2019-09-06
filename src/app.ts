@@ -11,6 +11,7 @@ import Database from './db';
 import Menu from './menu';
 import PlayerManager from './playerManager';
 import QuestionManager from './questionManager';
+import Screen from './screen';
 import SharedAssets from './sharedAssets';
 import { Category, Podium, Question } from './types';
 
@@ -18,6 +19,7 @@ export default class AltQuiz {
 	public colors: ColorMaterials;
 	public playerManager: PlayerManager;
 	public scene: MRE.Actor;
+	public screen: Screen;
 	public sharedAssets: SharedAssets;
 	public db: Database;
 	public get playerList() { return this.playerManager.playerList; }
