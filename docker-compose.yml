@@ -14,7 +14,9 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      database_url: postgresql://altquiz:cheesyexcitedbobcat@db
+      PGUSER: altquiz
+      PGPASSWORD: cheesyexcitedbobcat
+      PGHOST: db
     networks:
       internal:
     ports:
