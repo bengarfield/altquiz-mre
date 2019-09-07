@@ -117,6 +117,10 @@ export default class AltQuiz {
 		}
 
 		async function startNew() {
+			app.screen.actor.children[1].appearance.material = app.assets.createMaterial('borderFix', {
+				mainTextureId: app.sharedAssets.screenBorderMat.mainTextureId,
+				mainTextureOffset: {x: 0.5, y: 0}
+			});
 			app.gamemode = 'new';
 			let timeLeft = 0;
 			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
@@ -195,7 +199,7 @@ export default class AltQuiz {
 				});
 			}
 
-			const numOfQs = 1;
+			const numOfQs = 5;
 
 			const timeText = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
@@ -255,11 +259,13 @@ export default class AltQuiz {
 				timeLeft = count;
 				const timer = setInterval(() => {
 					if (next === 'reveal') {
-						app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
+						// app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
+						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
+						timeText.text.contents = timeLeft.toString().substr(0, 3);
 					} else {
-						app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
+						// app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
+						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
 					}
-					timeText.text.contents = timeLeft.toString().substr(0, 3);
 					timeLeft -= 0.05;
 					if (timeLeft <= 0) {
 						clearInterval(timer);
