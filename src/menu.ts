@@ -23,12 +23,12 @@ export default class Menu {
 		private onStartParty: () => void
 	) {
 		if (!this.app.screen) {
-			this.screen = new Screen(this.app, this.app.scene);
+			this.app.screen = new Screen(this.app, this.app.scene);
 		}
-		this.screen.setBorderProgress(0);
-		this.screen.setBorderColor(this.app.colors.white.color);
-		this.screen.actor.transform.local.position.set(0, 2, 0.025);
-		this.screen.actor.transform.local.scale.setAll(0.5);
+		this.app.screen.setBorderProgress(0);
+		this.app.screen.setBorderColor(this.app.colors.white.color);
+		this.app.screen.actor.transform.local.position.set(0, 2, 0.025);
+		this.app.screen.actor.transform.local.scale.setAll(0.5);
 
 		this.assets = new MRE.AssetContainer(this.app.context);
 

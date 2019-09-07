@@ -195,11 +195,7 @@ export default class AltQuiz {
 				});
 			}
 
-			// await getCategories();
-			const numOfQs = 5;
-			// loadedQuestions = await query(pgescape("SELECT * FROM questionsTest ORDER BY RANDOM() LIMIT " + numOfQs));
-
-			// displayQuestion(loadedQuestions.rows[currentQuestion]);
+			const numOfQs = 1;
 
 			const timeText = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
@@ -209,26 +205,46 @@ export default class AltQuiz {
 						position: {x: 1.5, y: 1.28, z: -0.01}
 					}},
 					text: {
-						contents: '0',
+						contents: '',
 						height: 0.2
 					}
 				}
 			});
 			let currentRound = 0;
-			startRound(9, 'easy', numOfQs).catch();
-			async function startRound(catId: number, diff: string, questions: number) {
+			startRound(app.categories.easy, 'easy', numOfQs).catch();
+			async function startRound(catList: Category[], diff: string, questions: number) {
+				shuffleArray(catList);
 				currentRound++;
 				currentQuestion = -1;
-				// numOfQs = questions;
-				roundBeginText1.text.contents = `Round ${currentRound}`;
-				roundBeginText2.text.contents = `${app.categoryRef[catId.toString()]} - ${diff.charAt(0).toUpperCase() + diff.substr(1, diff.length - 1)}`;
+				roundBeginText1.text.contents = `Round ${currentRound}: ${diff.charAt(0).toUpperCase() + diff.substr(1, diff.length - 1)}`;
 				roundBeginText3.text.contents = `${questions} Question${questions > 1 ? 's' : ''}`;
-				const sql = pgescape(`SELECT * FROM questionsTest WHERE categoryId = ${catId} AND difficulty = %L ORDER BY RANDOM() LIMIT ${questions}`, diff);
-				console.log(sql);
-				loadedQuestions = await app.db.query(sql);
-				// app.categories.splice(0, 1);
-				app.removeCategory(catId);
-				time(5, 'start');
+				let clickTime = (Math.random() * 45) + 5;
+				let count = 0;
+				const tick = async () => {
+					playSound('click');
+					roundBeginText2.text.contents = catList[count].name;
+					// console.log(count, clickTime);
+					if (clickTime > 1000) {
+						playSound('correct');
+						console.log(catList[count]);
+						const sql = pgescape(`SELECT * FROM questionsTest WHERE categoryId = ${catList[count].id} AND difficulty = %L ORDER BY RANDOM() LIMIT ${questions}`, diff);
+						console.log(sql);
+						loadedQuestions = await app.db.query(sql);
+						for (let i = 0; i < numOfQs; i++) {
+							loadedQuestions.rows[i].question = `${i + 1}: ${loadedQuestions.rows[i].question}`;
+						}
+						app.removeCategory(catList[count].id);
+						time(5, 'start');
+					} else {
+						if (count === app.categories.easy.length - 1) {
+							count = -1;
+						}
+						count++;
+						clickTime *= 1.2;
+						setTimeout(tick, clickTime);
+					}
+				};
+				setTimeout(tick, clickTime);
 			}
 			function time(count: number, next: string) {
 				if (next === 'reveal') {
@@ -325,8 +341,7 @@ export default class AltQuiz {
 												difficulty = 'medium';
 												catList = app.categories.medium;
 											}
-											shuffleArray(catList);
-											startRound(catList[0].id, difficulty, numOfQs).catch();
+											startRound(catList, difficulty, numOfQs).catch();
 											nextButton.destroy();
 											endButton.destroy();
 										}
@@ -399,6 +414,9 @@ export default class AltQuiz {
 			}
 		}
 		async function startClassic() {
+			if (app.screen) {
+				app.screen.unload();
+			}
 			app.gamemode = 'classic';
 			for (const u of app.context.users) {
 				u.groups.clear();
@@ -848,7 +866,7 @@ export default class AltQuiz {
 				for (let x = 0; x < 5; x++) {
 					if (app.podiumList[x].id === user.id) {
 						assignMat(app.podiumList[x].button, colors.green);
-						app.podiumList[x].model.findChildrenByName('panels', true)[0].children[0].appearance.material = colors.white;
+						app.podiumList[x].model.findChildrenByName('panels', true)[0].appearance.material = colors.white;
 						app.sharedAssets.screenBorderMat.color = podiumColors[x].color;
 					} else {
 						assignMat(app.podiumList[x].button, colors.darkRed);
@@ -2181,7 +2199,8 @@ export default class AltQuiz {
 				correct: app.assets.createSound('correct', {uri: app.baseUrl + '/sounds/correct.ogg'}),
 				wrong: app.assets.createSound('wrong', {uri: app.baseUrl + '/sounds/wrong.ogg'}),
 				rise: app.assets.createSound('rise', {uri: app.baseUrl + '/sounds/rise.ogg'}),
-				ticktock: app.assets.createSound('tick', {uri: app.baseUrl + '/sounds/ticktock.ogg'})
+				ticktock: app.assets.createSound('tick', {uri: app.baseUrl + '/sounds/ticktock.ogg'}),
+				click: app.assets.createSound('click', {uri: app.baseUrl + '/sounds/click.ogg'})
 		};
 		function playSound(sound: string, pitch = 0) {
 			console.log(`Playing sound: ${sound}`);
