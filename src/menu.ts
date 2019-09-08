@@ -349,10 +349,10 @@ export default class Menu {
 
 		// create border meshes
 		if (!this.iconOuter) {
-			this.iconOuter = this.assets.createCylinderMesh('iconOuter', 0.001, 0.06, 'z');
+			this.iconOuter = this.app.assets.createCylinderMesh('iconOuter', 0.001, 0.06, 'z');
 		}
 		if (!this.iconInner) {
-			this.iconInner = this.assets.createCylinderMesh('iconInner', 0.001, 0.05, 'z');
+			this.iconInner = this.app.assets.createCylinderMesh('iconInner', 0.001, 0.05, 'z');
 		}
 
 		// create player icon

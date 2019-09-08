@@ -41,7 +41,7 @@ export default class AltQuiz {
 	private mode = 'title';
 	private answerLocked = 0;
 	private scoresOnScreen = false;
-	private assets: MRE.AssetContainer = new MRE.AssetContainer(this.context);
+	public assets: MRE.AssetContainer = new MRE.AssetContainer(this.context);
 
 	public constructor(public context: MRE.Context, public params: MRE.ParameterSet, public baseUrl: string) {
 		this.colors = new ColorMaterials(context);
