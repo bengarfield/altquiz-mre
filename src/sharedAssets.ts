@@ -46,6 +46,8 @@ export default class SharedAssets {
 		p = r.container.loadGltf(baseUrl + '/answerButton.glb', 'mesh')
 			.then(assets => {
 				this.resources.answerButton.mainAsset = assets.find(a => !!a.prefab);
+				// buttons have a cyan background
+				assets.find(a => !!a.material).material.color = new MRE.Color4(.1477, .3514, .3773, 1);
 			});
 		promises.push(p);
 

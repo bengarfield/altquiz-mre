@@ -22,6 +22,25 @@ export default class Screen {
 				}
 			}
 		});
+
+		MRE.Actor.Create(this.app.context, {
+			actor: {
+				name: 'screenLight',
+				parentId: this.actor.id,
+				transform: {
+					local: {
+						position: { z: 6 },
+						rotation: MRE.Quaternion.FromEulerAngles(0, Math.PI, 0)
+					}
+				},
+				light: {
+					type: 'spot',
+					color: { r: 1, g: 1, b: 0.95 },
+					intensity: 5.5,
+					range: 4
+				}
+			}
+		})
 	}
 
 	public setBorderColor(color: MRE.Color4) {
