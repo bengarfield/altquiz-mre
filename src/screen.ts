@@ -56,5 +56,6 @@ export default class Screen {
 
 	public unload() {
 		this.actor.destroy();
+		this.app.screen = undefined;
 	}
 }

@@ -22,7 +22,13 @@ export default class SharedAssets {
 		return this.resources.screen.mainAsset as MRE.Prefab;
 	}
 	public get screenBorderMat() {
-		return this.resources.screen.container.materials[1];
+		return this.resources.screen.container.materials.find(m => m.name === 'border');
+	}
+	public get sqaureButton() {
+		return this.resources.squareButton.mainAsset as MRE.Prefab;
+	}
+	public get back() {
+		return this.resources.back.mainAsset as MRE.Material;
 	}
 
 	public load(context: MRE.Context, baseUrl: string): Promise<void> {
@@ -36,7 +42,9 @@ export default class SharedAssets {
 		r.mainAsset = r.container.createMaterial('logo', {
 			mainTextureId: r.container.createTexture('logo', {
 				uri: baseUrl + '/textures/logo.png'
-			}).id
+			}).id,
+			alphaMode: MRE.AlphaMode.Mask,
+			alphaCutoff: 0.5
 		});
 		promises.push(r.mainAsset.created);
 
@@ -50,6 +58,25 @@ export default class SharedAssets {
 				assets.find(a => !!a.material).material.color = new MRE.Color4(.1477, .3514, .3773, 1);
 			});
 		promises.push(p);
+
+		// load square button
+		r = { container: new MRE.AssetContainer(context) } as Resource;
+		this.resources.squareButton = r;
+		p = r.container.loadGltf(baseUrl + '/menuButtonSquare.glb', 'mesh')
+			.then(assets => {
+				this.resources.squareButton.mainAsset = assets.find(a => !!a.prefab);
+			});
+		promises.push(p);
+
+		// load back texture
+		r = { container: new MRE.AssetContainer(context) } as Resource;
+		this.resources.back = r;
+		r.mainAsset = r.container.createMaterial('back', {
+			mainTextureId: r.container.createTexture('back', {
+				uri: baseUrl + '/textures/back.png'
+			}).id
+		});
+		promises.push(r.mainAsset.created);
 
 		// load screen
 		r = { container: new MRE.AssetContainer(context) } as Resource;
