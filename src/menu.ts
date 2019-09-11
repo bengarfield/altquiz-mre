@@ -36,18 +36,11 @@ export default class Menu {
 
 		this.assets = new MRE.AssetContainer(this.app.context);
 
-		this.root = MRE.Actor.CreatePrimitive(this.assets, {
-			definition: {
-				shape: MRE.PrimitiveShape.Box,
-				dimensions: {x: 3.2, y: 1.8, z: 0}
-			},
+		this.root = MRE.Actor.Create(this.app.context, {
 			actor: {
 				name: 'menu',
 				parentId: this.app.scene.id,
-				transform: { local: { position: { y: 2 } } },
-				appearance: {
-					materialId: this.app.colors.black.id
-				}
+				transform: { local: { position: { y: 2 } } }
 			}
 		});
 

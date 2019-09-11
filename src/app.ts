@@ -117,27 +117,12 @@ export default class AltQuiz {
 		}
 
 		async function startNew() {
-			app.screen.actor.children[1].appearance.material = app.assets.createMaterial('borderFix', {
+			/* app.screen.actor.children[1].appearance.material = app.assets.createMaterial('borderFix', {
 				mainTextureId: app.sharedAssets.screenBorderMat.mainTextureId,
 				mainTextureOffset: {x: 0.5, y: 0}
-			});
+			}); */
 			app.gamemode = 'new';
 			let timeLeft = 0;
-			MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
-				definition: {
-					shape: MRE.PrimitiveShape.Box,
-					dimensions: {x: 3.2, y: 1.8, z: 0}
-				},
-				actor: {
-					parentId: app.scene.id,
-					transform: {local: {
-						position: {y: 2}
-					}},
-					appearance: {
-						materialId: colors.black.id
-					}
-				}
-			});
 			const roundBeginText1 = MRE.Actor.CreateEmpty(app.context, {
 				actor: {
 					parentId: app.scene.id,
@@ -228,7 +213,7 @@ export default class AltQuiz {
 					playSound('click');
 					roundBeginText2.text.contents = catList[count].name;
 					// console.log(count, clickTime);
-					if (clickTime > 1000) {
+					if (clickTime > 650) {
 						playSound('correct');
 						console.log(catList[count]);
 						const sql = pgescape(`SELECT * FROM questionsTest WHERE categoryId = ${catList[count].id} AND difficulty = %L ORDER BY RANDOM() LIMIT ${questions}`, diff);
@@ -259,12 +244,10 @@ export default class AltQuiz {
 				timeLeft = count;
 				const timer = setInterval(() => {
 					if (next === 'reveal') {
-						// app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
-						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.5 * ((count - timeLeft) / count), 0);
+						app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.5 * ((count - timeLeft) / count), 0);
 						timeText.text.contents = timeLeft.toString().substr(0, 3);
 					} else if (next !== 'scores') {
-						// app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
-						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.5 * ((count - timeLeft) / count) - 0.5, 0);
+						app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.5 * ((count - timeLeft) / count) - 0.5, 0);
 					}
 					timeLeft -= 0.05;
 					if (timeLeft <= 0) {

@@ -22,7 +22,7 @@ export default class SharedAssets {
 		return this.resources.screen.mainAsset as MRE.Prefab;
 	}
 	public get screenBorderMat() {
-		return this.resources.screen.container.materials[1];
+		return this.resources.screen.container.materials.find(m => m.name === 'border');
 	}
 	public get sqaureButton() {
 		return this.resources.squareButton.mainAsset as MRE.Prefab;
@@ -42,7 +42,9 @@ export default class SharedAssets {
 		r.mainAsset = r.container.createMaterial('logo', {
 			mainTextureId: r.container.createTexture('logo', {
 				uri: baseUrl + '/textures/logo.png'
-			}).id
+			}).id,
+			alphaMode: MRE.AlphaMode.Mask,
+			alphaCutoff: 0.5
 		});
 		promises.push(r.mainAsset.created);
 
