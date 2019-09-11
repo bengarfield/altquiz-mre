@@ -6,6 +6,7 @@ import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 
 import AltQuiz from './app';
 import { Player } from './player';
+import createRoundedButton from './roundedButton';
 import Screen from './screen';
 
 export default class Menu {
@@ -229,7 +230,20 @@ export default class Menu {
 		}
 
 		// create player join button
-		const menuButton1c = MRE.Actor.CreateEmpty(this.app.context, {
+		const menuButton1 = createRoundedButton(this.assets, {
+			width: 0.4,
+			height: 0.2,
+			borderThickness: 0.01,
+			radius: 0.05,
+			textSize: 0.1,
+			text: 'Join Game',
+			actor: {
+				name: 'joinButton',
+				parentId: this.root.id,
+				transform: { local: { position: { y: -0.35, z: -0.001 } } }
+			}
+		});
+		/* const menuButton1c = MRE.Actor.CreateEmpty(this.app.context, {
 			actor: {
 				name: 'join',
 				parentId: this.root.id,
@@ -256,7 +270,7 @@ export default class Menu {
 					height: 0.1
 				}
 			}
-		});
+		});*/
 		const playerCountLabel = MRE.Actor.CreateEmpty(this.app.context, {
 			actor: {
 				name: 'playerCount',
