@@ -1945,9 +1945,16 @@ export default class AltQuiz {
 				answerColors[i].color = colors.white.color;
 
 				setTimeout(() => {
+					const answerText = wrapText(answers[i], 20);
+					let answerHeight = 0.125;
+					if (answerText.lines > 1) {
+						for (let x = 0; x < answerText.lines - 1; x++) {
+							answerHeight -= 0.025;
+						}
+					}
 					const text3 = mainScreen.findChildrenByName(`answer${i}Text`, true)[0];
-					text3.text.contents = answers[i];
-					scaleText(answers[i], text3);
+					text3.text.contents = answerText.text;
+					text3.text.height = answerHeight;
 					answerColors[i].color = colors.white.color;
 				}, app.gamemode === 'new' ? 2000 : 0);
 			}
