@@ -8,6 +8,8 @@ import AltQuiz from './app';
 import { Player } from './player';
 import Screen from './screen';
 
+import convert = require('color-convert');
+
 export default class Menu {
 	private assets: MRE.AssetContainer;
 	private screen: Screen;
@@ -16,6 +18,8 @@ export default class Menu {
 
 	private iconOuter: MRE.Mesh;
 	private iconInner: MRE.Mesh;
+
+	private started = false;
 
 	public constructor(
 		private app: AltQuiz,
@@ -176,49 +180,17 @@ export default class Menu {
 	private createPartyMenu() {
 		// create back button
 		if (this.app.params.party === undefined) {
-			const backButton = MRE.Actor.CreateFromGltf(this.assets, {
-				uri: this.app.baseUrl + '/menuButtonSquare.glb',
-				colliderType: 'mesh',
+			const backButton = MRE.Actor.CreateFromPrefab(this.app.context, {
+				prefabId: this.app.sharedAssets.sqaureButton.id,
 				actor: {
 					name: 'backButton',
 					parentId: this.root.id,
 					transform: { local: { position: { x: -1.55, y: 0.7, z: -0.001 } } }
 				}
 			});
-			MRE.Actor.CreateEmpty(this.app.context, {
-				actor: {
-					name: 'backButtonLabel',
-					parentId: backButton.id,
-					transform: {
-						local: {
-							position: { x: -0.02, z: -0.005 },
-							scale: { y: 1.5 }
-						}
-					},
-					text: {
-						contents: '<',
-						anchor: MRE.TextAnchorLocation.MiddleCenter,
-						height: 0.1
-					}
-				}
-			});
-			MRE.Actor.CreateEmpty(this.app.context, {
-				actor: {
-					name: 'backButtonLabel2',
-					parentId: backButton.id,
-					transform: {
-						local: {
-							position: { y: 0.002, z: -0.005 },
-							scale: { x: 3, y: 1.5 }
-						}
-					},
-					text: {
-						contents: '-',
-						anchor: MRE.TextAnchorLocation.MiddleCenter,
-						height: 0.1
-					}
-				}
-			});
+			backButton.created().then(() => {
+				backButton.findChildrenByName('inner', false)[0].appearance.material = this.app.sharedAssets.back;
+			}).catch();
 
 			backButton.setBehavior(MRE.ButtonBehavior).onClick(user => {
 				if (this.app.playerManager.isMod(user)) {
@@ -278,7 +250,7 @@ export default class Menu {
 			actor: {
 				name: 'startGame',
 				parentId: this.root.id,
-				transform: { local: { position: { y: -0.7, z: -0.001 } } }
+				transform: { local: { position: { y: -0.675, z: -0.001 } } }
 			}
 		});
 		const menuButton2 = MRE.Actor.CreateFromPrefab(this.app.context, {
@@ -317,8 +289,10 @@ export default class Menu {
 			console.log('join');
 			const joined = this.app.playerManager.playerList.some(p => p.id === user.id);
 			if (!joined) {
-				const icon = this.createPlayerIcon(user.name);
-				this.app.playerList.push(new Player(user.id, user.name, icon));
+				const color = this.randomColor();
+				const icon = this.createPlayerIcon(user.name, user.id, color);
+				this.app.playerList.push(new Player(user.id, user.name, icon, color));
+
 				playerCountLabel.text.contents = `Players joined: ${this.app.playerList.length}`;
 			}
 		});
@@ -327,6 +301,7 @@ export default class Menu {
 			if (this.app.playerManager.isMod(user) && this.app.playerList.length > 0) {
 				this.unload();
 				this.onStartParty();
+				this.started = true;
 			}
 		});
 
@@ -334,13 +309,13 @@ export default class Menu {
 		this.app.getCategories().catch();
 	}
 
-	private createPlayerIcon(name: string): MRE.Actor {
+	private createPlayerIcon(name: string, id: string, color: MRE.Color3): MRE.Actor {
 		// re-layout icons
 		let offset = 0.5;
-		this.playerIconRoot.transform.local.position.x = this.app.playerList.length * offset * -0.5;
-		if (this.app.playerList.length > 7) {
+		this.playerIconRoot.transform.local.position.x = this.app.playerList.length * offset * -0.65;
+		if (this.app.playerList.length > 5) {
 			this.playerIconRoot.transform.local.position.x = -1.75;
-			offset = 3.5 / this.app.playerList.length;
+			offset = 2.9 / this.app.playerList.length;
 			for (let i = 0; i < this.playerIconRoot.children.length; i++) {
 				const icon = this.playerIconRoot.children[i];
 				icon.transform.local.position.x = i * offset;
@@ -368,18 +343,18 @@ export default class Menu {
 				collider: { geometry: { shape: 'auto' } }
 			}
 		});
-		MRE.Actor.Create(this.app.context, {
+		const inner = MRE.Actor.Create(this.app.context, {
 			actor: {
 				name: 'iconInner',
 				parentId: iconBase.id,
 				transform: { local: { position: { z: -0.001 } } },
 				appearance: {
 					meshId: this.iconInner.id,
-					materialId: this.app.colors.black.id
+					materialId: this.app.assets.createMaterial('playerColor', {color: color}).id
 				}
 			}
 		});
-		MRE.Actor.Create(this.app.context, {
+		const label = MRE.Actor.Create(this.app.context, {
 			actor: {
 				name: 'iconLabel',
 				parentId: iconBase.id,
@@ -420,7 +395,25 @@ export default class Menu {
 			}
 		});
 
+		iconHover.onButton('pressed', user => {
+			if (user.id === id && !this.started) {
+				const newColor = this.randomColor();
+				inner.appearance.material.color = newColor.toColor4();
+				for (const p of this.app.playerList) {
+					if (p.id === user.id) {
+						p.color = newColor;
+					}
+				}
+			}
+		});
+
 		return iconBase;
+	}
+
+	private randomColor(): MRE.Color3 {
+		// HSL 0-360, 75-100, 20-40
+		const rand = convert.hsl.rgb([Math.random() * 360, Math.random() * 25 + 50, Math.random() * 20 + 20]).map(x => x / 255);
+		return new MRE.Color3(rand[0], rand[1], rand[2]);
 	}
 
 	private clearMenu() {

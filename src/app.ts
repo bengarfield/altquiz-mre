@@ -260,11 +260,11 @@ export default class AltQuiz {
 				const timer = setInterval(() => {
 					if (next === 'reveal') {
 						// app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
-						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count), 0);
+						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.5 * ((count - timeLeft) / count), 0);
 						timeText.text.contents = timeLeft.toString().substr(0, 3);
-					} else {
+					} else if (next !== 'scores') {
 						// app.sharedAssets.screenBorderMat.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
-						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.497 * ((count - timeLeft) / count) - 0.5, 0);
+						app.screen.actor.children[1].appearance.material.mainTextureOffset.set(-0.5 * ((count - timeLeft) / count) - 0.5, 0);
 					}
 					timeLeft -= 0.05;
 					if (timeLeft <= 0) {
@@ -291,7 +291,7 @@ export default class AltQuiz {
 							if (currentQuestion !== numOfQs - 1) {
 								time(5, 'next');
 							} else {
-								time(5, 'scores');
+								time(3, 'scores');
 							}
 						} else if (next === 'next') {
 							currentQuestion++;
@@ -305,25 +305,25 @@ export default class AltQuiz {
 							setTimeout(() => {
 								let nextButton: MRE.Actor;
 								if (app.categories.hard.length > 0) {
-									nextButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
-										definition: {
-											shape: MRE.PrimitiveShape.Box,
-											dimensions: {x: 0.2, y: 0.2, z: 0.01}
-										},
-										addCollider: true,
+									nextButton = MRE.Actor.CreateFromPrefab(app.context, {
+										prefabId: app.sharedAssets.sqaureButton.id,
 										actor: {
 											parentId: app.scene.id,
 											name: 'nextButton',
 											transform: {local: {
-												position: {x: 1.55, y: 1.8}
+												position: {x: 1.55, y: 1.8, z: -0.001}
 											}}
 										}
 									});
+									nextButton.created().then(() => {
+										nextButton.findChildrenByName('inner', false)[0].appearance.material = app.sharedAssets.back;
+										nextButton.findChildrenByName('inner', false)[0].transform.local.scale.x *= -1;
+									}).catch();
 									MRE.Actor.CreateEmpty(app.context, {
 										actor: {
 											parentId: nextButton.id,
 											transform: {local: {
-												position: {y: -0.18, z: -0.001}
+												position: {y: -0.22}
 											}},
 											text: {
 												contents: 'Next Round',
@@ -337,6 +337,7 @@ export default class AltQuiz {
 											for (const p of app.playerList) {
 												p.icon.findChildrenByName('scoreBar', true)[0].destroy();
 												p.icon.findChildrenByName('scoreText', true)[0].destroy();
+												p.icon.findChildrenByName('nameText', true)[0].destroy();
 											}
 											let difficulty = 'easy';
 											let catList = app.categories.easy;
@@ -353,17 +354,13 @@ export default class AltQuiz {
 										}
 									});
 								}
-								const endButton = MRE.Actor.CreatePrimitive(new MRE.AssetContainer(app.context), {
-									definition: {
-										shape: MRE.PrimitiveShape.Box,
-										dimensions: {x: 0.2, y: 0.2, z: 0.01}
-									},
-									addCollider: true,
+								const endButton = MRE.Actor.CreateFromPrefab(app.context, {
+									prefabId: app.sharedAssets.sqaureButton.id,
 									actor: {
 										parentId: app.scene.id,
 										name: 'endButton',
 										transform: {local: {
-											position: {x: 1.55, y: 1.25}
+											position: {x: 1.55, y: 1.25, z: -0.001}
 										}}
 									}
 								});
@@ -371,7 +368,7 @@ export default class AltQuiz {
 									actor: {
 										parentId: endButton.id,
 										transform: {local: {
-											position: {y: -0.18, z: -0.001}
+											position: {y: -0.22}
 										}},
 										text: {
 											contents: 'End Game',
@@ -387,6 +384,7 @@ export default class AltQuiz {
 											for (const p of app.playerList) {
 												p.icon.findChildrenByName('scoreBar', true)[0].destroy();
 												p.icon.findChildrenByName('scoreText', true)[0].destroy();
+												p.icon.findChildrenByName('nameText', true)[0].destroy();
 											}
 											let winner = app.playerList[0];
 											for (const p of app.playerList) {
@@ -1988,7 +1986,7 @@ export default class AltQuiz {
 								parentId: p.icon.id,
 								name: 'scoreText',
 								transform: {local: {
-									position: {y: 0.12}
+									position: {y: 0.1}
 								}},
 								text: {
 									contents: p.answer === correctAnswer ? `+${100 + Math.round(p.timeToAnswer * 10)}` : '-100',
@@ -1999,7 +1997,7 @@ export default class AltQuiz {
 						});
 						setTimeout(() => {
 							scoreText.destroy();
-						}, 5000);
+						}, 3000);
 					}
 				}
 			}
@@ -2171,7 +2169,10 @@ export default class AltQuiz {
 						transform: {local: {
 							position: {y: 0.1},
 							scale: {y: 0}
-						}}
+						}},
+						appearance: {
+							materialId: p.icon.findChildrenByName('iconInner', true)[0].appearance.materialId
+						}
 					}
 				});
 				bar.animateTo({transform: {local: {
@@ -2184,12 +2185,28 @@ export default class AltQuiz {
 							parentId: p.icon.id,
 							name: 'scoreText',
 							transform: {local: {
-								position: {y: 1.6 * (scoreVal / highScore) + 0.2}
+								position: {y: 1.6 * (scoreVal / highScore) + 0.175}
 							}},
 							text: {
 								contents: p.score.toString(),
 								height: 0.15,
-								anchor: MRE.TextAnchorLocation.MiddleCenter
+								anchor: MRE.TextAnchorLocation.MiddleCenter,
+								color: p.color
+							}
+						}
+					});
+					MRE.Actor.CreateEmpty(app.context, {
+						actor: {
+							parentId: p.icon.id,
+							name: 'nameText',
+							transform: {local: {
+								position: {y: 1.6 * (scoreVal / highScore) + 0.275}
+							}},
+							text: {
+								contents: p.name,
+								height: 0.075,
+								anchor: MRE.TextAnchorLocation.MiddleCenter,
+								color: p.color
 							}
 						}
 					});
