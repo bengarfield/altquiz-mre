@@ -13,6 +13,7 @@ export interface PlayerLike {
 	timeToAnswer: number;
 	screen: MRE.Actor;
 	icon: MRE.Actor;
+	color: MRE.Color3;
 }
 
 export class Player implements PlayerLike {
@@ -24,10 +25,12 @@ export class Player implements PlayerLike {
 	public timeToAnswer = 0;
 	public screen: MRE.Actor;
 	public icon: MRE.Actor;
+	public color: MRE.Color3;
 
-	public constructor(id: string, name: string, icon: MRE.Actor) {
+	public constructor(id: string, name: string, icon: MRE.Actor, color: MRE.Color3) {
 		this.id = id;
 		this.name = name;
 		this.icon = icon;
+		this.color = color;
 	}
 }
