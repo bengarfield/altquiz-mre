@@ -198,7 +198,7 @@ export default class Menu {
 		// create player join button
 		const randoButton = createRoundedButton(this.assets, {
 			width: 0.5,
-			height: 0,
+			height: 0.2,
 			borderThickness: 0.01,
 			radius: 0.05,
 			textSize: 0.1,

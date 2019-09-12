@@ -125,38 +125,7 @@ function createRoundedBox(container: MRE.AssetContainer, o: {
 		});
 	}
 
-	if (o.width > 2 * o.radius) {
-		// top
-		MRE.Actor.Create(container.context, {
-			actor: {
-				name: 'northBox',
-				parentId: root.id,
-				appearance: { meshId: box.id, materialId: o.mat.id },
-				transform: {
-					local: {
-						position: { y: (o.height - o.radius) / 2 },
-						scale: { x: o.width - 2 * o.radius, y: o.height / 2 - o.radius }
-					}
-				}
-			}
-		});
-		// bottom
-		MRE.Actor.Create(container.context, {
-			actor: {
-				name: 'southBox',
-				parentId: root.id,
-				appearance: { meshId: box.id, materialId: o.mat.id },
-				transform: {
-					local: {
-						position: { y: (o.height - o.radius) / -2 },
-						scale: { x: o.width - 2 * o.radius, y: o.height / 2 - o.radius }
-					}
-				}
-			}
-		});
-	}
-
-	if (o.height > 2 * o.radius) {
+	if (o.width > 2 * o.radius && o.height > 2 * o.radius) {
 		// left
 		MRE.Actor.Create(container.context, {
 			actor: {
@@ -166,7 +135,7 @@ function createRoundedBox(container: MRE.AssetContainer, o: {
 				transform: {
 					local: {
 						position: { x: (o.width - o.radius) / -2 },
-						scale: { x: o.width / 2 - o.radius, y: o.height - 2 * o.radius }
+						scale: { x: o.radius, y: o.height - 2 * o.radius }
 					}
 				}
 			}
@@ -180,7 +149,35 @@ function createRoundedBox(container: MRE.AssetContainer, o: {
 				transform: {
 					local: {
 						position: { x: (o.width - o.radius) / 2 },
-						scale: { x: o.width / 2 - o.radius, y: o.height - 2 * o.radius }
+						scale: { x: o.radius, y: o.height - 2 * o.radius }
+					}
+				}
+			}
+		});
+		// top
+		MRE.Actor.Create(container.context, {
+			actor: {
+				name: 'northBox',
+				parentId: root.id,
+				appearance: { meshId: box.id, materialId: o.mat.id },
+				transform: {
+					local: {
+						position: { y: (o.height - o.radius) / 2 },
+						scale: { x: o.width - 2 * o.radius, y: o.radius }
+					}
+				}
+			}
+		});
+		// bottom
+		MRE.Actor.Create(container.context, {
+			actor: {
+				name: 'southBox',
+				parentId: root.id,
+				appearance: { meshId: box.id, materialId: o.mat.id },
+				transform: {
+					local: {
+						position: { y: (o.height - o.radius) / -2 },
+						scale: { x: o.width - 2 * o.radius, y: o.radius }
 					}
 				}
 			}
