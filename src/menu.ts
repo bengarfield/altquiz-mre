@@ -13,9 +13,9 @@ import convert = require('color-convert');
 
 export default class Menu {
 	private assets: MRE.AssetContainer;
-	private screen: Screen;
 	private root: MRE.Actor;
 	private playerIconRoot: MRE.Actor;
+	private logo: MRE.Actor;
 
 	private iconOuter: MRE.Mesh;
 	private iconInner: MRE.Mesh;
@@ -45,7 +45,7 @@ export default class Menu {
 			}
 		});
 
-		MRE.Actor.CreatePrimitive(this.assets, {
+		this.logo = MRE.Actor.CreatePrimitive(this.assets, {
 			definition: {
 				shape: MRE.PrimitiveShape.Plane,
 				dimensions: {x: 2.4, y: 1, z: 1.2}
@@ -196,9 +196,9 @@ export default class Menu {
 		}
 
 		// create player join button
-		const menuButton1 = createRoundedButton(this.assets, {
-			width: 0.4,
-			height: 0.2,
+		const randoButton = createRoundedButton(this.assets, {
+			width: 0.5,
+			height: 0,
 			borderThickness: 0.01,
 			radius: 0.05,
 			textSize: 0.1,
@@ -206,10 +206,11 @@ export default class Menu {
 			actor: {
 				name: 'joinButton',
 				parentId: this.root.id,
-				transform: { local: { position: { y: -0.35, z: -0.001 } } }
+				transform: { local: { position: { x: 1, y: -0.35, z: -0.001 } } }
 			}
 		});
-		/* const menuButton1c = MRE.Actor.CreateEmpty(this.app.context, {
+
+		const menuButton1c = MRE.Actor.CreateEmpty(this.app.context, {
 			actor: {
 				name: 'join',
 				parentId: this.root.id,
@@ -236,7 +237,7 @@ export default class Menu {
 					height: 0.1
 				}
 			}
-		});*/
+		});
 		const playerCountLabel = MRE.Actor.CreateEmpty(this.app.context, {
 			actor: {
 				name: 'playerCount',
@@ -424,8 +425,10 @@ export default class Menu {
 	}
 
 	private clearMenu() {
-		while (this.root.children.length) {
-			this.root.children[0].destroy();
+		for (const a of this.root.children) {
+			if (a !== this.logo) {
+				a.destroy();
+			}
 		}
 	}
 
