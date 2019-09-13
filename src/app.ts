@@ -289,33 +289,6 @@ export default class AltQuiz {
 							setTimeout(() => {
 								let nextButton: MRE.Actor;
 								if (app.categories.hard.length > 0) {
-									/* nextButton = MRE.Actor.CreateFromPrefab(app.context, {
-										prefabId: app.sharedAssets.sqaureButton.id,
-										actor: {
-											parentId: app.scene.id,
-											name: 'nextButton',
-											transform: {local: {
-												position: {x: 1.55, y: 1.8, z: -0.001}
-											}}
-										}
-									});
-									nextButton.created().then(() => {
-										nextButton.findChildrenByName('inner', false)[0].appearance.material = app.sharedAssets.back;
-										nextButton.findChildrenByName('inner', false)[0].transform.local.scale.x *= -1;
-									}).catch();
-									MRE.Actor.CreateEmpty(app.context, {
-										actor: {
-											parentId: nextButton.id,
-											transform: {local: {
-												position: {y: -0.22}
-											}},
-											text: {
-												contents: 'Next Round',
-												height: 0.1,
-												anchor: MRE.TextAnchorLocation.MiddleCenter
-											}
-										}
-									}); */
 									nextButton = createRoundedButton(app.assets, {
 										width: 0.8,
 										height: 0.3,
@@ -365,29 +338,6 @@ export default class AltQuiz {
 										transform: { local: { position: { x: 1.43, y: 2.8, z: -0.001 } } }
 									}
 								});
-								/* const endButton = MRE.Actor.CreateFromPrefab(app.context, {
-									prefabId: app.sharedAssets.sqaureButton.id,
-									actor: {
-										parentId: app.scene.id,
-										name: 'endButton',
-										transform: {local: {
-											position: {x: 1.55, y: 1.25, z: -0.001}
-										}}
-									}
-								});
-								MRE.Actor.CreateEmpty(app.context, {
-									actor: {
-										parentId: endButton.id,
-										transform: {local: {
-											position: {y: -0.22}
-										}},
-										text: {
-											contents: 'End Game',
-											height: 0.1,
-											anchor: MRE.TextAnchorLocation.MiddleCenter
-										}
-									}
-								}); */
 								let endClicked = false;
 								endButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
 									if (app.playerManager.isMod(user)) {
