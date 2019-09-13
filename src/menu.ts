@@ -196,55 +196,26 @@ export default class Menu {
 		}
 
 		// create player join button
-		const randoButton = createRoundedButton(this.assets, {
-			width: 0.5,
-			height: 0.2,
-			borderThickness: 0.01,
-			radius: 0.05,
+		const joinButton = createRoundedButton(this.assets, {
+			width: 1.4,
+			height: 0.3,
+			borderThickness: 0.015,
+			radius: 0.08,
 			textSize: 0.1,
 			text: 'Join Game',
 			actor: {
 				name: 'joinButton',
 				parentId: this.root.id,
-				transform: { local: { position: { x: 1, y: -0.35, z: -0.001 } } }
-			}
-		});
-
-		const menuButton1c = MRE.Actor.CreateEmpty(this.app.context, {
-			actor: {
-				name: 'join',
-				parentId: this.root.id,
 				transform: { local: { position: { y: -0.35, z: -0.001 } } }
 			}
 		});
-		const menuButton1 = MRE.Actor.CreateFromPrefab(this.app.context, {
-			prefabId: this.app.sharedAssets.answerButton.id,
-			actor: {
-				name: 'joinButton',
-				parentId: menuButton1c.id
-			}
-		});
-		MRE.Actor.CreateEmpty(this.app.context, {
-			actor: {
-				name: 'joinButtonLabel',
-				parentId: menuButton1c.id,
-				transform: {local: {
-					position: {y: 0.04, z: -0.005}
-				}},
-				text: {
-					contents: 'Join Game',
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.1
-				}
-			}
-		});
+		joinButton.findChildrenByName('label', false)[0].transform.local.position.y = 0.04;
+
 		const playerCountLabel = MRE.Actor.CreateEmpty(this.app.context, {
 			actor: {
 				name: 'playerCount',
-				parentId: menuButton1c.id,
-				transform: {local: {
-					position: {y: -0.06, z: -0.005}
-				}},
+				parentId: joinButton.id,
+				transform: { local: { position: { y: -0.06, z: -0.005 } } },
 				text: {
 					contents: 'Players joined: 0',
 					anchor: MRE.TextAnchorLocation.MiddleCenter,
@@ -253,31 +224,17 @@ export default class Menu {
 			}
 		});
 
-		// create start game button
-		const menuButton2c = MRE.Actor.CreateEmpty(this.app.context, {
+		const startButton = createRoundedButton(this.assets, {
+			width: 1.4,
+			height: 0.3,
+			borderThickness: 0.015,
+			radius: 0.08,
+			textSize: 0.1,
+			text: 'Start Game',
 			actor: {
 				name: 'startGame',
 				parentId: this.root.id,
 				transform: { local: { position: { y: -0.675, z: -0.001 } } }
-			}
-		});
-		const menuButton2 = MRE.Actor.CreateFromPrefab(this.app.context, {
-			prefabId: this.app.sharedAssets.answerButton.id,
-			actor: {
-				name: 'startGameButton',
-				parentId: menuButton2c.id
-			}
-		});
-		MRE.Actor.CreateEmpty(this.app.context, {
-			actor: {
-				name: 'startGameLabel',
-				parentId: menuButton2c.id,
-				transform: { local: { position: { z: -0.005 } } },
-				text: {
-					contents: 'Start Game',
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.1
-				}
 			}
 		});
 
@@ -293,7 +250,7 @@ export default class Menu {
 		});
 
 		// wire up buttons
-		menuButton1.setBehavior(MRE.ButtonBehavior).onClick(user => {
+		joinButton.setBehavior(MRE.ButtonBehavior).onClick(user => {
 			console.log('join');
 			const joined = this.app.playerManager.playerList.some(p => p.id === user.id);
 			if (!joined) {
@@ -305,7 +262,7 @@ export default class Menu {
 			}
 		});
 
-		menuButton2.setBehavior(MRE.ButtonBehavior).onClick(user => {
+		startButton.setBehavior(MRE.ButtonBehavior).onClick(user => {
 			if (this.app.playerManager.isMod(user) && this.app.playerList.length > 0) {
 				this.unload();
 				this.onStartParty();

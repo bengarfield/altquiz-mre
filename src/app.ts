@@ -11,6 +11,7 @@ import Database from './db';
 import Menu from './menu';
 import PlayerManager from './playerManager';
 import QuestionManager from './questionManager';
+import createRoundedButton from './roundedButton';
 import Screen from './screen';
 import SharedAssets from './sharedAssets';
 import { Category, Podium, Question } from './types';
@@ -288,7 +289,7 @@ export default class AltQuiz {
 							setTimeout(() => {
 								let nextButton: MRE.Actor;
 								if (app.categories.hard.length > 0) {
-									nextButton = MRE.Actor.CreateFromPrefab(app.context, {
+									/* nextButton = MRE.Actor.CreateFromPrefab(app.context, {
 										prefabId: app.sharedAssets.sqaureButton.id,
 										actor: {
 											parentId: app.scene.id,
@@ -314,6 +315,19 @@ export default class AltQuiz {
 												anchor: MRE.TextAnchorLocation.MiddleCenter
 											}
 										}
+									}); */
+									nextButton = createRoundedButton(app.assets, {
+										width: 0.8,
+										height: 0.3,
+										borderThickness: 0.015,
+										radius: 0.08,
+										textSize: 0.1,
+										text: 'Next Round',
+										actor: {
+											name: 'nextRound',
+											parentId: app.scene.id,
+											transform: { local: { position: { x: 1.43, y: 2.435, z: -0.001 } } }
+										}
 									});
 									nextButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
 										if (app.playerManager.isMod(user)) {
@@ -337,7 +351,21 @@ export default class AltQuiz {
 										}
 									});
 								}
-								const endButton = MRE.Actor.CreateFromPrefab(app.context, {
+
+								const endButton = createRoundedButton(app.assets, {
+									width: 0.8,
+									height: 0.3,
+									borderThickness: 0.015,
+									radius: 0.08,
+									textSize: 0.1,
+									text: 'End Game',
+									actor: {
+										name: 'endGame',
+										parentId: app.scene.id,
+										transform: { local: { position: { x: 1.43, y: 2.8, z: -0.001 } } }
+									}
+								});
+								/* const endButton = MRE.Actor.CreateFromPrefab(app.context, {
 									prefabId: app.sharedAssets.sqaureButton.id,
 									actor: {
 										parentId: app.scene.id,
@@ -359,7 +387,7 @@ export default class AltQuiz {
 											anchor: MRE.TextAnchorLocation.MiddleCenter
 										}
 									}
-								});
+								}); */
 								let endClicked = false;
 								endButton.setBehavior(MRE.ButtonBehavior).onButton('pressed', (user: MRE.User) => {
 									if (app.playerManager.isMod(user)) {
@@ -382,7 +410,7 @@ export default class AltQuiz {
 											if (app.categories.hard.length > 0) {
 												nextButton.destroy();
 											}
-											endButton.children[0].text.contents = 'Back to Menu';
+											endButton.findChildrenByName('label', false)[0].text.contents = 'Back to Menu';
 											endClicked = true;
 										} else {
 											app.playerManager.playerList = [];

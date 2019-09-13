@@ -17,6 +17,7 @@ export default function createRoundedButton(container: MRE.AssetContainer, optio
 	const root = MRE.Actor.Create(container.context, {
 		actor: {
 			name: 'roundedButton',
+			...options.actor,
 			collider: {
 				geometry: {
 					shape: 'box',
@@ -69,6 +70,7 @@ export default function createRoundedButton(container: MRE.AssetContainer, optio
 	MRE.Actor.Create(container.context, {
 		actor: {
 			name: 'label',
+			parentId: root.id,
 			transform: { local: { position: { z: -0.008 } } },
 			text: {
 				contents: options.text,
@@ -196,7 +198,7 @@ function createRoundedBox(container: MRE.AssetContainer, o: {
 						x: Math.min(-o.width / 2 + o.radius, 0),
 						y: Math.max(o.height / 2 - o.radius, 0)
 					},
-					scale: { x: o.radius, y: o.radius, z: o.radius }
+					scale: { x: o.radius, y: o.radius }
 				}
 			}
 		}
@@ -215,7 +217,7 @@ function createRoundedBox(container: MRE.AssetContainer, o: {
 							x: o.width / 2 - o.radius,
 							y: Math.max(o.height / 2 - o.radius, 0)
 						},
-						scale: { x: o.radius, y: o.radius, z: o.radius }
+						scale: { x: o.radius, y: o.radius }
 					}
 				}
 			}
@@ -235,7 +237,7 @@ function createRoundedBox(container: MRE.AssetContainer, o: {
 							x: Math.min(-o.width / 2 + o.radius, 0),
 							y: -o.height / 2 + o.radius
 						},
-						scale: { x: o.radius, y: o.radius, z: o.radius }
+						scale: { x: o.radius, y: o.radius }
 					}
 				}
 			}
@@ -252,7 +254,7 @@ function createRoundedBox(container: MRE.AssetContainer, o: {
 				transform: {
 					local: {
 						position: { x: o.width / 2 - o.radius, y: -o.height / 2 + o.radius },
-						scale: { x: o.radius, y: o.radius, z: o.radius }
+						scale: { x: o.radius, y: o.radius }
 					}
 				}
 			}
