@@ -6,15 +6,16 @@ import * as MRE from '@microsoft/mixed-reality-extension-sdk';
 
 import AltQuiz from './app';
 import { Player } from './player';
+import createRoundedButton from './roundedButton';
 import Screen from './screen';
 
 import convert = require('color-convert');
 
 export default class Menu {
 	private assets: MRE.AssetContainer;
-	private screen: Screen;
 	private root: MRE.Actor;
 	private playerIconRoot: MRE.Actor;
+	private logo: MRE.Actor;
 
 	private iconOuter: MRE.Mesh;
 	private iconInner: MRE.Mesh;
@@ -36,22 +37,15 @@ export default class Menu {
 
 		this.assets = new MRE.AssetContainer(this.app.context);
 
-		this.root = MRE.Actor.CreatePrimitive(this.assets, {
-			definition: {
-				shape: MRE.PrimitiveShape.Box,
-				dimensions: {x: 3.2, y: 1.8, z: 0}
-			},
+		this.root = MRE.Actor.Create(this.app.context, {
 			actor: {
 				name: 'menu',
 				parentId: this.app.scene.id,
-				transform: { local: { position: { y: 2 } } },
-				appearance: {
-					materialId: this.app.colors.black.id
-				}
+				transform: { local: { position: { y: 2 } } }
 			}
 		});
 
-		MRE.Actor.CreatePrimitive(this.assets, {
+		this.logo = MRE.Actor.CreatePrimitive(this.assets, {
 			definition: {
 				shape: MRE.PrimitiveShape.Plane,
 				dimensions: {x: 2.4, y: 1, z: 1.2}
@@ -202,41 +196,26 @@ export default class Menu {
 		}
 
 		// create player join button
-		const menuButton1c = MRE.Actor.CreateEmpty(this.app.context, {
+		const joinButton = createRoundedButton(this.assets, {
+			width: 1.4,
+			height: 0.3,
+			borderThickness: 0.015,
+			radius: 0.08,
+			textSize: 0.1,
+			text: 'Join Game',
 			actor: {
-				name: 'join',
+				name: 'joinButton',
 				parentId: this.root.id,
 				transform: { local: { position: { y: -0.35, z: -0.001 } } }
 			}
 		});
-		const menuButton1 = MRE.Actor.CreateFromPrefab(this.app.context, {
-			prefabId: this.app.sharedAssets.answerButton.id,
-			actor: {
-				name: 'joinButton',
-				parentId: menuButton1c.id
-			}
-		});
-		MRE.Actor.CreateEmpty(this.app.context, {
-			actor: {
-				name: 'joinButtonLabel',
-				parentId: menuButton1c.id,
-				transform: {local: {
-					position: {y: 0.04, z: -0.005}
-				}},
-				text: {
-					contents: 'Join Game',
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.1
-				}
-			}
-		});
+		joinButton.findChildrenByName('label', false)[0].transform.local.position.y = 0.04;
+
 		const playerCountLabel = MRE.Actor.CreateEmpty(this.app.context, {
 			actor: {
 				name: 'playerCount',
-				parentId: menuButton1c.id,
-				transform: {local: {
-					position: {y: -0.06, z: -0.005}
-				}},
+				parentId: joinButton.id,
+				transform: { local: { position: { y: -0.06, z: -0.005 } } },
 				text: {
 					contents: 'Players joined: 0',
 					anchor: MRE.TextAnchorLocation.MiddleCenter,
@@ -245,31 +224,17 @@ export default class Menu {
 			}
 		});
 
-		// create start game button
-		const menuButton2c = MRE.Actor.CreateEmpty(this.app.context, {
+		const startButton = createRoundedButton(this.assets, {
+			width: 1.4,
+			height: 0.3,
+			borderThickness: 0.015,
+			radius: 0.08,
+			textSize: 0.1,
+			text: 'Start Game',
 			actor: {
 				name: 'startGame',
 				parentId: this.root.id,
 				transform: { local: { position: { y: -0.675, z: -0.001 } } }
-			}
-		});
-		const menuButton2 = MRE.Actor.CreateFromPrefab(this.app.context, {
-			prefabId: this.app.sharedAssets.answerButton.id,
-			actor: {
-				name: 'startGameButton',
-				parentId: menuButton2c.id
-			}
-		});
-		MRE.Actor.CreateEmpty(this.app.context, {
-			actor: {
-				name: 'startGameLabel',
-				parentId: menuButton2c.id,
-				transform: { local: { position: { z: -0.005 } } },
-				text: {
-					contents: 'Start Game',
-					anchor: MRE.TextAnchorLocation.MiddleCenter,
-					height: 0.1
-				}
 			}
 		});
 
@@ -285,7 +250,7 @@ export default class Menu {
 		});
 
 		// wire up buttons
-		menuButton1.setBehavior(MRE.ButtonBehavior).onClick(user => {
+		joinButton.setBehavior(MRE.ButtonBehavior).onClick(user => {
 			console.log('join');
 			const joined = this.app.playerManager.playerList.some(p => p.id === user.id);
 			if (!joined) {
@@ -297,7 +262,7 @@ export default class Menu {
 			}
 		});
 
-		menuButton2.setBehavior(MRE.ButtonBehavior).onClick(user => {
+		startButton.setBehavior(MRE.ButtonBehavior).onClick(user => {
 			if (this.app.playerManager.isMod(user) && this.app.playerList.length > 0) {
 				this.unload();
 				this.onStartParty();
@@ -417,8 +382,10 @@ export default class Menu {
 	}
 
 	private clearMenu() {
-		while (this.root.children.length) {
-			this.root.children[0].destroy();
+		for (const a of this.root.children) {
+			if (a !== this.logo) {
+				a.destroy();
+			}
 		}
 	}
 

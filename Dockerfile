@@ -7,7 +7,7 @@ RUN ["npm", "install", "--unsafe-perm"]
 COPY public ./public/
 
 COPY tsconfig.json ./
-COPY src ./src/
+COPY src/*.ts ./src/
 RUN ["npm", "run", "build"]
 
 EXPOSE 3901/tcp
